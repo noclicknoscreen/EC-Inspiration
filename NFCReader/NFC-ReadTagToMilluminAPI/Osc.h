@@ -38,8 +38,13 @@ const unsigned int outPort = 5000;
 #define OUT_BONUS 1
 
 int xColBonus, sColBonus, mColBonus, lColBonus;
+int numVignette;
 
 void OscInit() {
+
+  randomSeed(analogRead(0));
+
+  IPAddress ip = IPAddress(192, 168, 2, 11);  // Node static IP
 
   // WiFi Init --------------------------------
   byte mac[6];
@@ -56,13 +61,14 @@ void OscInit() {
   Serial.print(mac[4], HEX);
   Serial.print(":");
   Serial.println(mac[5], HEX);
-  
+
   Serial.print("Connecting to SSID [");
   Serial.print(ssid);
   Serial.print("] pass [");
   Serial.print(pass);
   Serial.println("]");
-  
+
+  WiFi.config(ip);
   WiFi.begin(ssid, pass);
 
   while (WiFi.status() != WL_CONNECTED) {
@@ -85,6 +91,7 @@ void OscInit() {
   sColBonus = random(4);
   mColBonus = random(4);
   lColBonus = random(4);
+  numVignette = random(3);
 
 }
 
@@ -99,16 +106,16 @@ void wifiCheck() {
 
 }
 
-int incBonus(int _bonus){
+int incBonus(int _bonus) {
   // Increment
   _bonus++;
   // If you go too far, come back !
-  if(_bonus >= 4){
-     _bonus = 0;
+  if (_bonus >= 4) {
+    _bonus = 0;
   }
 
   return _bonus;
-  
+
 }
 
 int getNextBonus(char _tag) {
@@ -191,7 +198,11 @@ void sendIt(String _address, int _intValue) {
     Serial.print(_addr);
   */
   Serial.print(" Value=");
-  Serial.println(String(_intValue));
+  Serial.print(String(_intValue));
+  Serial.print(" To : ");
+  Serial.print(outIp);
+  Serial.print(",");
+  Serial.println(outPort);
 
   OSCMessage msg(_addr);
 
@@ -204,32 +215,32 @@ void sendIt(String _address, int _intValue) {
 
 }
 
-void sendIt(String _address, String _strValue) {
-
-  char _addr[255];
-  _address.toCharArray(_addr, 255);
-
-  Serial.print("Sending message Addr=");
-  Serial.print(_address);
-  /*
-    Serial.print(" len=");
-    Serial.print(_address.length());
-    Serial.print(" Char Addr=");
-    Serial.print(_addr);
-  */
-  Serial.print(" Value=");
-  Serial.println(_strValue);
-
-  OSCMessage msg(_addr);
-
-  msg.add(_strValue);
-
-  Udp.beginPacket(outIp, outPort);
-  msg.send(Udp); // send the bytes to the SLIP stream
-  Udp.endPacket(); // mark the end of the OSC Packet
-  msg.empty(); // free space occupied by message
-
-}
+//void sendIt(String _address, String _strValue) {
+//
+//  char _addr[255];
+//  _address.toCharArray(_addr, 255);
+//
+//  Serial.print("Sending message Addr=");
+//  Serial.print(_address);
+//  /*
+//    Serial.print(" len=");
+//    Serial.print(_address.length());
+//    Serial.print(" Char Addr=");
+//    Serial.print(_addr);
+//  */
+//  Serial.print(" Value=");
+//  Serial.print(_strValue);
+//
+//  OSCMessage msg(_addr);
+//
+//  msg.add(_strValue);
+//
+//  Udp.beginPacket(outIp, outPort);
+//  msg.send(Udp); // send the bytes to the SLIP stream
+//  Udp.endPacket(); // mark the end of the OSC Packet
+//  msg.empty(); // free space occupied by message
+//
+//}
 
 // ------------------------------------------------------------
 // Sending TAG
@@ -244,20 +255,42 @@ void sendIt(String _address, String _strValue) {
 void sendTag(char _tag, int _inOutBonus, int _colBonus) {
 
   int columnIdx = getColumnIdx(_tag);
+  /*
+    Serial.print("Sending Message, Tag=[");
+    Serial.print(_tag);
+    Serial.print("] , colBase=[");
+    Serial.print(String(columnIdx));
+    Serial.print("], inOutBonus=[");
+    Serial.print(String(_inOutBonus));
+    Serial.print("], colBonus=[");
+    Serial.print(String(_colBonus));
+    Serial.println("]");
+  */
 
-  Serial.print("Sending Message, Tag=[");
-  Serial.print(_tag);
-  Serial.print("] , colBase=[");
-  Serial.print(String(columnIdx));
-  Serial.print("], inOutBonus=[");
-  Serial.print(String(_inOutBonus));
-  Serial.print("], colBonus=[");
-  Serial.print(String(_colBonus));
-  Serial.println("]");
-  
   if (columnIdx >= 1) {
     // Idx is right, send it !
-    sendIt("/millumin/action/launchColumn", _inOutBonus + 2*_colBonus + columnIdx);
+    // Launch a column --
+    sendIt("/millumin/action/launchColumn", _inOutBonus + 2 * _colBonus + columnIdx);
+
+    if (_inOutBonus == IN_BONUS) {
+      // But Change the vignette (X, S , M ou L)
+      if (_tag == 'X') {
+        sendIt("/millumin/VignetteX/media/time", 10 * numVignette);
+      } else if (_tag == 'S') {
+        sendIt("/millumin/VignetteS/media/time", 10 * numVignette);
+      } else if (_tag == 'M') {
+        sendIt("/millumin/VignetteM/media/time", 10 * numVignette);
+      } else if (_tag == 'L') {
+        sendIt("/millumin/VignetteL/media/time", 10 * numVignette);
+      }
+      // Incremente le numéro de vignette
+      numVignette++;
+      if (numVignette > 3) {
+        numVignette = 0;
+      }
+
+    }
+
   } else {
     // not right, print a tip
     Serial.print("Column Idx is out of range, probably wrong tag (");

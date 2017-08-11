@@ -16,9 +16,10 @@ PN532_SPI pn532spi(SPI, 10);
 NfcAdapter nfc = NfcAdapter(pn532spi);
 // Reading of the tag
 //#define unknownTag  '?'
-#define noTag       '#'
 
-char lastTag = noTag;
+#define TAGR_EMPTY 'e'
+
+char lastTag = TAGR_EMPTY;
 
 void NFCInit() {
 
@@ -38,67 +39,95 @@ void NFCInit() {
 // ------------------------------------------------------------
 char readSizeAsChar() {
 
-  NfcTag tag = nfc.read();
+  // 'e' as Emtpy
+  char result = TAGR_EMPTY;
+  NfcTag tag;
+  String uid;
 
-  if (tag.hasNdefMessage()) // every tag won't have a message
-  {
+  tag = nfc.read();
 
-    NdefMessage message = tag.getNdefMessage();
+  uid = tag.getUidString();
 
-    int recordCount = message.getRecordCount();
+  Serial.print("Read a tag [");
+  Serial.print(tag.getTagType());
+  Serial.print("] UID: ");
+  Serial.println(tag.getUidString());
 
-    // Trapping unexpected behaviors
-    if (recordCount == 0) {
-      Serial.print("No Record found.");
-      return 'n';
-    }
-
-    if (recordCount >= 2) {
-
-      // So idx seems good, let's get it !
-      NdefRecord record = message.getRecord(2);
-
-      int payloadLength = record.getPayloadLength();
-      byte payload[payloadLength];
-      record.getPayload(payload);
-
-      // Force the data into a String (might work depending on the content)
-      // Real code should use smarter processing
-      String payloadAsString = "";
-      for (int c = 0; c < payloadLength; c++) {
-        payloadAsString += (char)payload[c];
-      }
-
-      char result = payloadAsString.charAt(1);
-      //byte byteResult = payloadAsString.getBytesAt(1);
-      /*
-      Serial.print("NDEF Record : ");
-      Serial.print("Payload (as String):");
-      Serial.print(payloadAsString);
-      Serial.print(" Char 0 :");
-      Serial.print(String(result));
-      Serial.print(" Char 0 as Int:");
-      Serial.print(String(result, HEX));
-      Serial.println();
-      */
-      return result;
-
-    } else {
-      return 'e';
-    }
-
+  // In case of emergency
+  // X : EA 2F 0C 52
+  // S : FA F3 EC A3
+  // M : 9A 80 AF DD
+  // L : DA C7 EA A3
+  if(uid == "EA 2F 0C 52"){
+    result = 'X';
+  }else if(uid == "FA F3 EC A3"){
+    result = 'S';
+  }else if(uid == "9A 80 AF DD"){
+    result = 'M';
+  }else if(uid == "DA C7 EA A3"){
+    result = 'L';
   }
+
+  return result;
+
+//  if (tag.hasNdefMessage()) // every tag won't have a message
+//  {
+//
+//    NdefMessage message = tag.getNdefMessage();
+//
+//    int recordCount = message.getRecordCount();
+//
+//    // Trapping unexpected behaviors
+//    if (recordCount == 0) {
+//      Serial.print("No Record found.");
+//      result = TAGR_EMPTY;
+//
+//    } else if (recordCount >= 2) {
+//
+//      // So idx seems good, let's get it !
+//      NdefRecord record = message.getRecord(2);
+//
+//      int payloadLength = record.getPayloadLength();
+//      byte payload[payloadLength];
+//      record.getPayload(payload);
+//
+//      // Force the data into a String (might work depending on the content)
+//      // Real code should use smarter processing
+//      String payloadAsString = "";
+//      for (int c = 0; c < payloadLength; c++) {
+//        payloadAsString += (char)payload[c];
+//      }
+//
+//      result = payloadAsString.charAt(1);
+//      //byte byteResult = payloadAsString.getBytesAt(1);
+//      /*
+//        Serial.print("NDEF Record : ");
+//          Serial.print("Payload (as String):");
+//        Serial.print(payloadAsString);
+//        Serial.print(" Char 0 :");
+//        Serial.print(String(result));
+//        Serial.print(" Char 0 as Int:");
+//        Serial.print(String(result, HEX));
+//        Serial.println();
+//      */
+//      //return result;
+//
+//    }
+//  }
+//
+//  return result;
+
 }
 
 
 char nfcGetNewTag() {
 
-  char newTag = noTag;
+  char newTag = TAGR_EMPTY;
 
   if (nfc.tagPresent()) {
     newTag = readSizeAsChar();
   }
 
   return newTag;
-  
+
 }

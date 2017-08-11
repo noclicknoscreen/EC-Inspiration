@@ -11,7 +11,7 @@ void setup() {
   pinMode(CTRL_LED, OUTPUT);
 
   NFCInit();
-  
+
   OscInit();
 
 }
@@ -25,7 +25,7 @@ void loop() {
   // --------------------------------------------------
   // IN = First, I had no tag and I put it in
   // --------------------------------------------------
-  if (lastTag == noTag && currentTag != noTag) {
+  if (lastTag == TAGR_EMPTY && currentTag != TAGR_EMPTY) {
     // -------------------------------------------
     Serial.print("Brand New Tag : [");
     Serial.print(String(currentTag));
@@ -37,7 +37,7 @@ void loop() {
   // --------------------------------------------------
   // OUT = Second, I had a tag and put it out
   // --------------------------------------------------
-  else if (lastTag != noTag && currentTag == noTag) {
+  else if (lastTag != TAGR_EMPTY && currentTag == TAGR_EMPTY) {
     // -------------------------------------------
     Serial.print("Removed old Tag : [");
     Serial.print(String(lastTag));
@@ -48,8 +48,8 @@ void loop() {
 
   else {
     /*
-    Serial.print(millis());
-    Serial.println(" : Place your tag. Waiting for reading.");
+      Serial.print(millis());
+      Serial.println(" : Place your tag. Waiting for reading.");
     */
     Serial.print(".");
     //  Serial.println("1 Second wait.");
@@ -57,7 +57,7 @@ void loop() {
   }
 
   // Wait a bit
-  delay(50);
+  //delay(1000);
 
 }
 

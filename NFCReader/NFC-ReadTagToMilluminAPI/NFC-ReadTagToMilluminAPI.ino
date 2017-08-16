@@ -1,5 +1,7 @@
-
-// ---
+/*
+   Written, maintained by : Sébastien Albert
+   V 0.0.1
+*/
 
 #include "Osc.h"
 #include "NFC.h"
@@ -7,17 +9,21 @@
 #define CTRL_LED 13
 
 void setup() {
+  // Init the serial
   Serial.begin(115200);
   pinMode(CTRL_LED, OUTPUT);
 
+  // Init the Shield
   NFCInit();
 
+  // Init connection
   OscInit();
 
 }
 
 void loop() {
 
+  // Check connection and talk about it
   wifiCheck();
 
   char currentTag = nfcGetNewTag();
@@ -46,22 +52,10 @@ void loop() {
     lastTag = currentTag;
   }
 
+  // --------------------------------------------------
+  // nothing, print a dot
+  // --------------------------------------------------
   else {
-    /*
-      Serial.print(millis());
-      Serial.println(" : Place your tag. Waiting for reading.");
-    */
     Serial.print(".");
-    //  Serial.println("1 Second wait.");
-
   }
-
-  // Wait a bit
-  //delay(1000);
-
 }
-
-
-
-
-

@@ -1,3 +1,9 @@
+/*
+   OSC File :
+   1/ Connect into UDP via Wifi
+   2/ Send OSC Command
+*/
+
 #include <Arduino.h>
 #include <NCNS-ArduinoTools.h>
 
@@ -44,7 +50,9 @@ void OscInit() {
 
   randomSeed(analogRead(0));
 
-  IPAddress ip = IPAddress(192, 168, 2, 11);  // Node static IP
+  // IPs are static, DHCP does not look easy with arduino
+  // My static IP
+  IPAddress ip = IPAddress(192, 168, 2, 11);
 
   // WiFi Init --------------------------------
   byte mac[6];
@@ -95,6 +103,9 @@ void OscInit() {
 
 }
 
+/*
+   Check and comment via Serial
+*/
 void wifiCheck() {
 
   // Control the connection (led #0)
@@ -191,12 +202,6 @@ void sendIt(String _address, int _intValue) {
 
   Serial.print("Sending message Addr=");
   Serial.print(_address);
-  /*
-    Serial.print(" len=");
-    Serial.print(_address.length());
-    Serial.print(" Char Addr=");
-    Serial.print(_addr);
-  */
   Serial.print(" Value=");
   Serial.print(String(_intValue));
   Serial.print(" To : ");
@@ -215,33 +220,6 @@ void sendIt(String _address, int _intValue) {
 
 }
 
-//void sendIt(String _address, String _strValue) {
-//
-//  char _addr[255];
-//  _address.toCharArray(_addr, 255);
-//
-//  Serial.print("Sending message Addr=");
-//  Serial.print(_address);
-//  /*
-//    Serial.print(" len=");
-//    Serial.print(_address.length());
-//    Serial.print(" Char Addr=");
-//    Serial.print(_addr);
-//  */
-//  Serial.print(" Value=");
-//  Serial.print(_strValue);
-//
-//  OSCMessage msg(_addr);
-//
-//  msg.add(_strValue);
-//
-//  Udp.beginPacket(outIp, outPort);
-//  msg.send(Udp); // send the bytes to the SLIP stream
-//  Udp.endPacket(); // mark the end of the OSC Packet
-//  msg.empty(); // free space occupied by message
-//
-//}
-
 // ------------------------------------------------------------
 // Sending TAG
 // To send a tag :
@@ -255,17 +233,6 @@ void sendIt(String _address, int _intValue) {
 void sendTag(char _tag, int _inOutBonus, int _colBonus) {
 
   int columnIdx = getColumnIdx(_tag);
-  /*
-    Serial.print("Sending Message, Tag=[");
-    Serial.print(_tag);
-    Serial.print("] , colBase=[");
-    Serial.print(String(columnIdx));
-    Serial.print("], inOutBonus=[");
-    Serial.print(String(_inOutBonus));
-    Serial.print("], colBonus=[");
-    Serial.print(String(_colBonus));
-    Serial.println("]");
-  */
 
   if (columnIdx >= 1) {
     // Idx is right, send it !

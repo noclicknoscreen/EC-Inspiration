@@ -1,36 +1,41 @@
 
 /*---------------------------------------------------------------------------------------------
 
-  Open Sound Control (OSC) library for the ESP8266
-
-  Example for receiving open sound control (OSC) bundles on the ESP8266
-  Send integers '0' or '1' to the address "/led" to turn on/off the built-in LED of the esp8266.
-
-  This example code is in the public domain.
+  Written, maintained by Dudley smith
+  V 0.0.1
 
   --------------------------------------------------------------------------------------------- */
+
+// --------------------------------------------------------------------------------------
+// Bunch of Ethernet, Wifi, UDP and OSC
 #include <ESP8266WiFi.h>
 #include <WiFiUdp.h>
 #include <OSCMessage.h>
 #include <OSCBundle.h>
 #include <OSCData.h>
 
-#include <NCNS-ArduinoTools.h>
+// --------------------------------------------------------------------------------------
+// Next, motor driving files
+// --------------------------------------------------------------------------------------
 
-char ssid[] = "linksys-MedenAgan";          // your network SSID (name)
-char pass[] = "Edwood72";                    // your network password
+// --------------------------------------------------------------------------------------
+// Generic helping functions
+#include <NCNS-ArduinoTools.h>
+#define ERROR_LED   0
+#define POSTN_LED   4
 
 // A UDP instance to let us send and receive packets over UDP
 WiFiUDP Udp;
 const unsigned int localPort = 2390;        // local port to listen for UDP packets (here's where we send the packets)
 
-#define ERROR_LED   0
-#define POSTN_LED   4
+char ssid[] = "linksys-MedenAgan";          // your network SSID (name)
+char pass[] = "Edwood72";                   // your network password
 
-OSCErrorCode error;
+
 unsigned int receivedPosition = 0;              // LOW means led is *on*
 
 void setup() {
+  
   Serial.begin(115200);
   Serial.println();
   Serial.println();
@@ -40,8 +45,10 @@ void setup() {
 
   byte mac[6];
   WiFi.macAddress(mac);
-  IPAddress ip = getIp(mac);  // Node static IP
-  // Update these with values suitable for your network.
+  // IPs are static, DHCP does not look easy with arduino
+  // My static IP
+  IPAddress ip = getIp(mac);
+  //
   IPAddress gateway(192, 168, 2, 1);
   IPAddress subnet(255, 255, 255, 0);
 
@@ -74,6 +81,11 @@ void setup() {
 
 }
 
+/*
+   DHCP is not stable, enough
+   IP are static
+   Down here are the hack of DHCP
+*/
 IPAddress getIp(byte _mac[6]) {
 
   IPAddress _ip;
@@ -91,7 +103,7 @@ IPAddress getIp(byte _mac[6]) {
   strMac += ":";
   strMac += String(_mac[5], HEX);
   strMac.toUpperCase();
-  
+
   Serial.print("MAC Address: ");
   Serial.println(strMac);
 
@@ -117,20 +129,6 @@ IPAddress getIp(byte _mac[6]) {
 
 }
 
-void positionChange(OSCMessage &msg) {
-  // Possibly issue onto Millumin, so constrain the values
-  float msgContent = constrain(msg.getFloat(0), 0.0, 1.0);
-
-  receivedPosition = 255 * msgContent;
-  analogWrite(POSTN_LED, receivedPosition);
-
-  Serial.print("/position: ");
-  Serial.print(msgContent);
-  Serial.print(" receivedPosition : ");
-  Serial.println(receivedPosition);
-
-}
-
 void loop() {
 
   // Control the connection (led #0)
@@ -148,18 +146,23 @@ void loop() {
     int size = Udp.parsePacket();
 
     if (size > 0) {
+      
       Serial.print(millis());
       Serial.print(" : ");
       Serial.println("OSC Packet as Bundle Received");
 
       while (size--) {
+        // Read and feed the object --
         bundle.fill(Udp.read());
       }
 
       if (!bundle.hasError()) {
+        // Dispatch from Addresses received to callback functions
         bundle.dispatch("/position", positionChange);
+        
       } else {
-        error = bundle.getError();
+        // Errors, print them
+        OSCErrorCode error = bundle.getError();
         Serial.print("error: ");
         Serial.println(error);
         // not connected => Message + Blink Lon
@@ -170,5 +173,19 @@ void loop() {
   }
 }
 
+/*
+ * Function callback, called at every OSC bundle received
+ */
+void positionChange(OSCMessage &msg) {
+  // Possibly issue onto Millumin, so constrain the values
+  float msgContent = constrain(msg.getFloat(0), 0.0, 1.0);
 
+  receivedPosition = 255 * msgContent;
+  analogWrite(POSTN_LED, receivedPosition);
 
+  Serial.print("/position: ");
+  Serial.print(msgContent);
+  Serial.print(" receivedPosition : ");
+  Serial.println(receivedPosition);
+
+}

@@ -108,7 +108,7 @@ IPAddress getIp(byte _mac[6]) {
   Serial.println(strMac);
 
   // My Own DHCP Table :((((
-  if (strMac == "60:1:94:19:ec:a8") {
+  if (strMac == "60:1:94:19:EC:A8") {
     // Feather 1
     _ip = IPAddress(192, 168, 2, 12);
   } else if (strMac == "5C:CF:7F:3A:1B:8E") {

@@ -21,9 +21,7 @@
 
 /*---------------------------------------------------------------------------------------------
     TODO :
-      - variable globale de position à gérer
       - constante définissant l'ip du serveur vidéo (ou alors trouver un moyen de brodcaster la position)
-      - Ignorer tous les messages OSC pendant la manoeuvre.
 
   --------------------------------------------------------------------------------------------- */
 
@@ -64,6 +62,8 @@ typedef struct {
   String mac_address;
   IPAddress ip;
   int totalSteps;
+  int stepsByRevolution;
+  int speed;
 } Feather;
 
 Feather feathers[NUMBER_OF_FEATHERS];
@@ -76,22 +76,30 @@ void initFeathers() {
   feathers[0].name = "Feather 1 - Volet de la Cave T";
   feathers[0].mac_address = "60:1:94:19:EC:A8";
   feathers[0].ip = IPAddress(192, 168, 2, 12);
-  feathers[0].totalSteps = 50000;
+  feathers[0].totalSteps = 5000;
+  feathers[0].stepsByRevolution = 200; // nb de pas par tour
+  feathers[0].speed = 50; // rpm
 
   feathers[1].name = "Feather 2 - Volet de la Cave Z";
   feathers[1].mac_address = "5C:CF:7F:3A:1B:8E";
   feathers[1].ip = IPAddress(192, 168, 2, 13);
-  feathers[1].totalSteps = 5000;
+  feathers[1].totalSteps = 500;
+  feathers[1].stepsByRevolution = 200; // nb de pas par tour
+  feathers[1].speed = 50; // rpm
 
   feathers[2].name = "Feather 3 - Volet de la Cave Y";
   feathers[2].mac_address = "5C:CF:7F:3A:39:41";
   feathers[2].ip = IPAddress(192, 168, 2, 14);
-  feathers[2].totalSteps = 3000;
+  feathers[2].totalSteps = 300;
+  feathers[2].stepsByRevolution = 200; // nb de pas par tour
+  feathers[2].speed = 50; // rpm
 
   feathers[3].name = "Feather 4 - Volet de la Cave X";
   feathers[3].mac_address = "5C:CF:7F:3A:2D:73";
   feathers[3].ip = IPAddress(192, 168, 2, 15);
-  feathers[3].totalSteps = 10000;
+  feathers[3].totalSteps = 1000;
+  feathers[3].stepsByRevolution = 200; // nb de pas par tour
+  feathers[3].speed = 50; // rpm
 
 }
 
@@ -102,7 +110,6 @@ Adafruit_MotorShield AFMS = Adafruit_MotorShield(0x60); // Default address, no j
 // Connect a stepper motor with 200 steps per revolution (1.8 degree)
 // to motor port #2 (M3 and M4)
 Adafruit_StepperMotor *myMotor = AFMS.getStepper(200, 2);
-int motorSpeed = 50; // 50 rpm
 float currentPosition = 0.0; // We suppose that the store is closed at initial state.
 
 // --------------------------------------------------------------------------------------
@@ -119,14 +126,22 @@ ESP8266WebServer server(80);
 
 // --------------------------------------------------------------------------------------
 //  Position
-unsigned int receivedPosition = 0;              // LOW means led is *on*
+unsigned int receivedPosition = 0; // LOW means led is *on*
+boolean ignore_osc_messages = false; // if false, then listen and read OSC event. Otherwise waiting for finish movement
 
 /*-----------------------------------------------*
      Handle to /close, /open and /position (or /)
   -----------------------------------------------*/
 void handleRoot() {
   Serial.println("Requested '/'");
-  server.send(200, "text/json", "{ value : '', message : 'Ici l identification du feather (N°serie, IP, store pilote, etc... et help.' }");
+  String content = "{ value : 0.0, ";
+  content += "message : '";
+  content += featherInfo();
+  content += "\n\n/open to open the store.";
+  content += "\n/close to close the store.";
+  content += "\n/pause to pause the movement.";
+  content +=  "' }";
+  server.send(200, "text/json", content);
 }
 
 void handlePosition() {
@@ -140,11 +155,13 @@ void handlePosition() {
 void handleOpen() {
   Serial.println("Requested '/open'");
   server.send(200, "text/json", "{ value : '', message : 'Opening the store...' }");
+  openStore();
 }
 
 void handleClose() {
   Serial.println("Requested '/close'");
   server.send(200, "text/json", "{ value : '', message : 'Closing the store...' }");
+  closeStore();
 }
 
 void handlePause() {
@@ -195,8 +212,61 @@ int guessFeather() {
   return -1;
 }
 
-/*-----------------------------------------------*/
 
+String featherInfo() {
+  IPAddress _ip = feathers[featherId].ip;
+  String str = "\n----------------------------------------";
+  str += "\nfeather Id : ";
+  str += featherId;
+  str += "\nName : ";
+  str += feathers[featherId].name;
+  str += "\nMac Address : ";
+  str += feathers[featherId].mac_address;
+  str += "\nIP : ";
+  str += String(_ip[0]) + String(".") + String(_ip[1]) + String(".") + String(_ip[2]) + String(".") + String(_ip[3]);
+  str += "\nTotal Steps Number : ";
+  str += feathers[featherId].totalSteps;
+  str += "\n----------------------------------------\n";
+  return str;
+}
+
+/*
+   Reading OSC Bundles, and treat them with an callback
+*/
+void readOSC() {
+  OSCBundle bundle;
+  int size = Udp.parsePacket();
+
+  if (size > 0) {
+
+    Serial.print(millis());
+    Serial.print(" : ");
+    Serial.println("OSC Packet as Bundle Received");
+
+    while (size--) {
+      // Read and feed the object --
+      bundle.fill(Udp.read());
+    }
+
+    if (!bundle.hasError()) {
+      // Dispatch from Addresses received to callback functions
+      bundle.dispatch("/position", positionChange);
+
+    } else {
+      // Errors, print them
+      OSCErrorCode error = bundle.getError();
+      Serial.print("error: ");
+      Serial.println(error);
+      // not connected => Message + Blink Lon
+      errorBlink(ERROR_LED, 200);
+
+    }
+  }
+}
+
+/*-----------------------------------------------
+                   S E T U P
+  ----------------------------------------------*/
 void setup() {
   // Serial
   Serial.begin(115200);
@@ -211,18 +281,7 @@ void setup() {
 
   // Who Am I ?
   featherId = guessFeather();
-  Serial.println("----------------------------------------");
-  Serial.print("feather Id : ");
-  Serial.println(featherId);
-  Serial.print("Name : ");
-  Serial.println(feathers[featherId].name);
-  Serial.print("Mac Address : ");
-  Serial.println(feathers[featherId].mac_address);
-  Serial.print( "IP : ");
-  Serial.println(feathers[featherId].ip);
-  Serial.print("Total Steps Number : ");
-  Serial.println(feathers[featherId].totalSteps);
-  Serial.println("----------------------------------------");
+  Serial.print(featherInfo());
 
   // Wifi connection
   // IPs are static, DHCP does not look easy with arduino
@@ -261,14 +320,13 @@ void setup() {
   Serial.println("init Stepper with 1.6kHz frequency...");
   AFMS.begin(1600);  // create with the default frequency 1.6KHz
   Serial.print("Set speed to ");
-  Serial.print(motorSpeed);
+  Serial.print(feathers[featherId].speed);
   Serial.println(" rpm");
-  myMotor->setSpeed(motorSpeed); // We probably need to adjust speed later in the code to keep the same time between each store.
+  myMotor->setSpeed(feathers[featherId].speed); // We probably need to adjust speed later in the code to keep the same time between each store.
   Serial.println("Stepper initialized !");
   Serial.println("");
 
   // Close the store at startup.
-  //
 
   // Web server preparation
   if (MDNS.begin("esp8266")) {
@@ -286,15 +344,9 @@ void setup() {
 
 }
 
-/*
-   Returning the number of steps for the window opening/closing
-   This is a big hack to keep the code generic for the 4 feathers
-*/
-int getTotalStepsNumber() {
-
-  return 10000;
-}
-
+/*-----------------------------------------------
+                   L O O P
+  ----------------------------------------------*/
 void loop() {
 
   // Control the connection (led #0)
@@ -309,34 +361,9 @@ void loop() {
 
     ledBlink(ERROR_LED, 1000);
 
-    // Then wait for OSC
-    OSCBundle bundle;
-    int size = Udp.parsePacket();
-
-    if (size > 0) {
-
-      Serial.print(millis());
-      Serial.print(" : ");
-      Serial.println("OSC Packet as Bundle Received");
-
-      while (size--) {
-        // Read and feed the object --
-        bundle.fill(Udp.read());
-      }
-
-      if (!bundle.hasError()) {
-        // Dispatch from Addresses received to callback functions
-        bundle.dispatch("/position", positionChange);
-
-      } else {
-        // Errors, print them
-        OSCErrorCode error = bundle.getError();
-        Serial.print("error: ");
-        Serial.println(error);
-        // not connected => Message + Blink Lon
-        errorBlink(ERROR_LED, 200);
-
-      }
+    // Then wait for OSC if all movements are achieved
+    if (!ignore_osc_messages) {
+      readOSC();
     }
   }
 }
@@ -346,32 +373,55 @@ void loop() {
 */
 void positionChange(OSCMessage &msg) {
   // Possibly issue onto Millumin, so constrain the values
+  // This should be 0.0 or 1.0
   float nextPosition = constrain(msg.getFloat(0), 0.0, 1.0);
 
   receivedPosition = 255 * nextPosition;
-  int stepsNumber = int(getTotalStepsNumber() * 0.1);
-
   analogWrite(POSTN_LED, receivedPosition);
 
   Serial.print("/position: ");
   Serial.print(nextPosition);
-  Serial.print(" receivedPosition : ");
-  Serial.println(receivedPosition);
   Serial.print(", Running to the motor for ");
-  Serial.print(stepsNumber);
-  Serial.println(" steps");
+  Serial.print(feathers[featherId].totalSteps);
+  Serial.print(" steps. ");
+  Serial.print("This should take about ");
+  Serial.print(60 * feathers[featherId].totalSteps / feathers[featherId].stepsByRevolution / feathers[featherId].speed);
+  Serial.println(" seconds.");
 
-  // how do we know the direction ?
-  // 0 = close = downStep
-  // 1 = open = upStep
+  ignore_osc_messages = true;
   // We have to store precedent position
-  if (nextPosition > 0 && nextPosition < 1) {
-    if (currentPosition < nextPosition ) { // Open
-
-    } else { // Close
-
+  if (nextPosition == 0.0 || nextPosition == 1.0) {
+    if (currentPosition < nextPosition ) {
+      // Open
+      openStore();
+    } else {
+      // Close
+      closeStore();
     }
     currentPosition = nextPosition;
-  }
+    ignore_osc_messages = false;
 
+  } else { // Not the value we were waiting for.
+    ledBlink(ERROR_LED, 200);
+    Serial.print("The value was not suitable (");
+    Serial.print(nextPosition);
+    Serial.println("). This should be 0.0 or 1.0.");
+  }
 }
+
+/*
+   Ouverture du store
+*/
+void openStore() {
+  Serial.println("Open : Double coil steps FORWARD");
+  myMotor->step(feathers[featherId].totalSteps, FORWARD, DOUBLE);
+}
+
+/*
+   Fermeture du store
+*/
+void closeStore() {
+  Serial.println("Close : Double coil steps BACKWARD");
+  myMotor->step(feathers[featherId].totalSteps, BACKWARD, DOUBLE);
+}
+

@@ -22,8 +22,7 @@
 /*---------------------------------------------------------------------------------------------
     TODO :
       - constante définissant l'ip du serveur vidéo (ou alors trouver un moyen de brodcaster la position)
-      - Envoie bundle OSC de fermeture pour les autres feathers, lorsque celui-ci s'ouvre
-
+      
   --------------------------------------------------------------------------------------------- */
 
 // --------------------------------------------------------------------------------------
@@ -213,9 +212,12 @@ int guessFeather() {
   return -1;
 }
 
+String humanReadableIp(IPAddress ip) {
+  return String(ip[0]) + String(".") + String(ip[1]) + String(".") + String(ip[2]) + String(".") + String(ip[3]);
+}
 
 String featherInfo() {
-  IPAddress _ip = feathers[featherId].ip;
+  //IPAddress _ip = feathers[featherId].ip;
   String str = "\n----------------------------------------";
   str += "\nfeather Id : ";
   str += featherId;
@@ -224,7 +226,8 @@ String featherInfo() {
   str += "\nMac Address : ";
   str += feathers[featherId].mac_address;
   str += "\nIP : ";
-  str += String(_ip[0]) + String(".") + String(_ip[1]) + String(".") + String(_ip[2]) + String(".") + String(_ip[3]);
+  str += humanReadableIp(feathers[featherId].ip);
+  //String(_ip[0]) + String(".") + String(_ip[1]) + String(".") + String(_ip[2]) + String(".") + String(_ip[3]);
   str += "\nTotal Steps Number : ";
   str += feathers[featherId].totalSteps;
   str += "\n----------------------------------------\n";
@@ -234,7 +237,7 @@ String featherInfo() {
 /*
    Reading OSC Bundles, and treat them with an callback
 */
-void readOSC() {
+void readOSCBundle() {
   OSCBundle bundle;
   int size = Udp.parsePacket();
 
@@ -263,6 +266,22 @@ void readOSC() {
 
     }
   }
+}
+
+
+/*
+   Reading OSC Bundles on the network
+*/
+void SendOSCBundle(IPAddress ip, String path, float value) {
+  Serial.print("Sending OSC Bundle to " + humanReadableIp(ip));
+  Serial.print(" : " + path + "/");
+  Serial.println(value);
+  OSCMessage msg("/position");
+  msg.add(value);
+  Udp.beginPacket(ip, localPort);
+  msg.send(Udp);
+  Udp.endPacket();
+  msg.empty();
 }
 
 /*-----------------------------------------------
@@ -364,7 +383,7 @@ void loop() {
 
     // Then wait for OSC if all movements are achieved
     if (!ignore_osc_messages) {
-      readOSC();
+      readOSCBundle();
     }
   }
 }
@@ -393,6 +412,12 @@ void positionChange(OSCMessage &msg) {
   // We have to store precedent position
   if (nextPosition == 0.0 || nextPosition == 1.0) {
     if (currentPosition < nextPosition ) {
+      // close all others stores
+      for (int i = 0; i < NUMBER_OF_FEATHERS; i++) {
+        if (i != featherId) {
+          SendOSCBundle(IPAddress(feathers[i].ip), "/position", 0.0);
+        }
+      }
       // Open
       openStore();
     } else {

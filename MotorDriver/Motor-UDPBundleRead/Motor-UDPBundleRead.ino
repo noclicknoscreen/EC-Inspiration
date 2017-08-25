@@ -22,6 +22,7 @@
 /*---------------------------------------------------------------------------------------------
     TODO :
       - constante définissant l'ip du serveur vidéo (ou alors trouver un moyen de brodcaster la position)
+      - Envoie bundle OSC de fermeture pour les autres feathers, lorsque celui-ci s'ouvre
 
   --------------------------------------------------------------------------------------------- */
 

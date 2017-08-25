@@ -103,7 +103,7 @@ IPAddress getIp(byte _mac[6]) {
   -----------------------------------------------*/
 void handleRoot() {
   Serial.println("Requested '/'");
-  server.send(200, "text/json", "{ value : '', message : 'Ici l identification du feather (N°serie, IP, store pilote, etc...' }");
+  server.send(200, "text/json", "{ value : '', message : 'Ici l identification du feather (N°serie, IP, store pilote, etc... et help.' }");
 }
 
 void handlePosition() {
@@ -122,6 +122,11 @@ void handleOpen() {
 void handleClose() {
   Serial.println("Requested '/close'");
   server.send(200, "text/json", "{ value : '', message : 'Closing the store...' }");
+}
+
+void handlePause() {
+  Serial.println("Requested '/pause'");
+  server.send(200, "text/json", "{ value : '', message : 'The store is paused' }");
 }
 
 void handleNotFound() {

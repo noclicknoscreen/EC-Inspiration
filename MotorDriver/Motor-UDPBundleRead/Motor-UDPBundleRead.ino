@@ -37,7 +37,7 @@ Adafruit_MotorShield AFMS = Adafruit_MotorShield(0x60); // Default address, no j
 // to motor port #2 (M3 and M4)
 Adafruit_StepperMotor *myMotor = AFMS.getStepper(200, 2);
 int motorSpeed = 50; // 50 rpm
-float previousPosition = 0.0; // We suppose that the store is closed at initial state.
+float currentPosition = 0.0; // We suppose that the store is closed at initial state.
 
 // A UDP instance to let us send and receive packets over UDP
 WiFiUDP Udp;
@@ -291,7 +291,7 @@ void positionChange(OSCMessage &msg) {
   Serial.print(nextPosition);
   Serial.print(" receivedPosition : ");
   Serial.println(receivedPosition);
-  Serial.print(" Starting to the motor for ");
+  Serial.print(" Running to the motor for ");
   Serial.println(stepsNumber);
   Serial.println(" steps");
 
@@ -300,12 +300,12 @@ void positionChange(OSCMessage &msg) {
   // 1 = open = upStep
   // We have to store precedent position
   if (nextPosition > 0 && nextPosition < 1) {
-    if (previousPosition < nextPosition ) { // Open
+    if (currentPosition < nextPosition ) { // Open
 
     } else { // Close
 
     }
-    previousPosition = nextPosition;
+    currentPosition = nextPosition;
   }
 
 }

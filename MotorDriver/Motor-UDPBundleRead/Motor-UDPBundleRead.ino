@@ -3,8 +3,10 @@
   Written, maintained by Dudley smith / Pierre-Gilles Levallois
   V 0.1.0
 
+   DHCP is not stable, enough  IP are static
+
   Le feather reçoit un bundle Osc 0 (fermer le volet) ou 1 (ouvrir le volet)
-  S'il reçoit 0 : 
+  S'il reçoit 0 :
    1. Il enclenche le moteur pour fermeture du volet
    2. Il ignore tous les autres messages OSC tant qu'il n'a pas finit la fermeture
    3. Il donne envoi sa position en OSC (le nombre de pas restant à parcourir / Nombre de pas total)
@@ -14,18 +16,15 @@
    2. Il enclenche le moteur pour ouverture du volet.
    3. Il ignore tous les autres messages OSC tant qu'il n'a pas finit l'ouverture.
    4. Il brodcaste sa position en OSC (le nombre de pas restant à parcourir / Nombre de pas total)
-   
+
   --------------------------------------------------------------------------------------------- */
-  
+
 /*---------------------------------------------------------------------------------------------
-    TODO : 
+    TODO :
       - variable globale de position à gérer
       - constante définissant l'ip du serveur vidéo (ou alors trouver un moyen de brodcaster la position)
-      - Structure globale de configuration 
-          - addr MAC
-          - IP
-          - nombre de pas ( fonction de la longueur du volet)
-      - Ignorer tous les messages OSC pendant la manoeuvre.    
+      - Ignorer tous les messages OSC pendant la manoeuvre.
+
   --------------------------------------------------------------------------------------------- */
 
 // --------------------------------------------------------------------------------------
@@ -50,9 +49,53 @@
 // --------------------------------------------------------------------------------------
 // Generic helping functions
 #include <NCNS-ArduinoTools.h>
+
+// --------------------------------------------------------------------------------------
+// Global declarations
+
 #define ERROR_LED   0
 #define POSTN_LED   4
+#define NUMBER_OF_FEATHERS 4
 
+// Structure to declare all the feathers of the install
+// This helps a lot keeping this code unique for all devices.
+typedef struct {
+  String name;
+  String mac_address;
+  IPAddress ip;
+  int totalSteps;
+} Feather;
+
+Feather feathers[NUMBER_OF_FEATHERS];
+int featherId = 0;  // index of feather in the structure
+
+// --------------------------------------------------------------------------------------
+//  PARAMETRAGE DES FEATHERS DE L'INSTALLATION
+// --------------------------------------------------------------------------------------
+void initFeathers() {
+  feathers[0].name = "Feather 1 - Volet de la Cave T";
+  feathers[0].mac_address = "60:1:94:19:EC:A8";
+  feathers[0].ip = IPAddress(192, 168, 2, 12);
+  feathers[0].totalSteps = 50000;
+
+  feathers[1].name = "Feather 2 - Volet de la Cave Z";
+  feathers[1].mac_address = "5C:CF:7F:3A:1B:8E";
+  feathers[1].ip = IPAddress(192, 168, 2, 13);
+  feathers[1].totalSteps = 5000;
+
+  feathers[2].name = "Feather 3 - Volet de la Cave Y";
+  feathers[2].mac_address = "5C:CF:7F:3A:39:41";
+  feathers[2].ip = IPAddress(192, 168, 2, 14);
+  feathers[2].totalSteps = 3000;
+
+  feathers[3].name = "Feather 4 - Volet de la Cave X";
+  feathers[3].mac_address = "5C:CF:7F:3A:2D:73";
+  feathers[3].ip = IPAddress(192, 168, 2, 15);
+  feathers[3].totalSteps = 10000;
+
+}
+
+// --------------------------------------------------------------------------------------
 // Create the motor shield object with the default I2C address
 Adafruit_MotorShield AFMS = Adafruit_MotorShield(0x60); // Default address, no jumper, no stacking
 // Generic motor connected. We need to adjust step number when we will receive the motor
@@ -62,6 +105,7 @@ Adafruit_StepperMotor *myMotor = AFMS.getStepper(200, 2);
 int motorSpeed = 50; // 50 rpm
 float currentPosition = 0.0; // We suppose that the store is closed at initial state.
 
+// --------------------------------------------------------------------------------------
 // A UDP instance to let us send and receive packets over UDP
 WiFiUDP Udp;
 const unsigned int localPort = 2390;        // local port to listen for UDP packets (here's where we send the packets)
@@ -69,57 +113,13 @@ const unsigned int localPort = 2390;        // local port to listen for UDP pack
 char ssid[] = "linksys-MedenAgan";          // your network SSID (name)
 char pass[] = "Edwood72";                   // your network password
 
-
-unsigned int receivedPosition = 0;              // LOW means led is *on*
-
+// --------------------------------------------------------------------------------------
+// Web server
 ESP8266WebServer server(80);
 
-/*----------------------------------------------------
-   DHCP is not stable, enough
-   IP are static
-   Down here are the hack of DHCP
-  ----------------------------------------------------*/
-IPAddress getIp(byte _mac[6]) {
-
-  IPAddress _ip;
-
-  String strMac;
-  strMac += String(_mac[0], HEX);
-  strMac += ":";
-  strMac += String(_mac[1], HEX);
-  strMac += ":";
-  strMac += String(_mac[2], HEX);
-  strMac += ":";
-  strMac += String(_mac[3], HEX);
-  strMac += ":";
-  strMac += String(_mac[4], HEX);
-  strMac += ":";
-  strMac += String(_mac[5], HEX);
-  strMac.toUpperCase();
-
-  Serial.print("MAC Address: ");
-  Serial.println(strMac);
-
-  // My Own DHCP Table :((((
-  if (strMac == "60:1:94:19:EC:A8") {
-    // Feather 1
-    _ip = IPAddress(192, 168, 2, 12);
-  } else if (strMac == "5C:CF:7F:3A:1B:8E") {
-    // Feather 2
-    _ip = IPAddress(192, 168, 2, 13);
-  } else if (strMac == "5C:CF:7F:3A:39:41") {
-    // Feather 3
-    _ip = IPAddress(192, 168, 2, 14);
-  } else if (strMac == "5C:CF:7F:3A:2D:73") {
-    // Feather 4
-    _ip = IPAddress(192, 168, 2, 15);
-  }
-
-  Serial.print("Obtained IP is : ");
-  Serial.println(_ip);
-
-  return _ip;
-}
+// --------------------------------------------------------------------------------------
+//  Position
+unsigned int receivedPosition = 0;              // LOW means led is *on*
 
 /*-----------------------------------------------*
      Handle to /close, /open and /position (or /)
@@ -167,24 +167,67 @@ void handleNotFound() {
   server.send(404, "text/plain", message);
 }
 
+/*
+   Return the index in structure of all feather, taking mac adress in account
+*/
+int guessFeather() {
+  byte _mac[6];
+  WiFi.macAddress(_mac);
+  String strMac;
+  strMac += String(_mac[0], HEX);
+  strMac += ":";
+  strMac += String(_mac[1], HEX);
+  strMac += ":";
+  strMac += String(_mac[2], HEX);
+  strMac += ":";
+  strMac += String(_mac[3], HEX);
+  strMac += ":";
+  strMac += String(_mac[4], HEX);
+  strMac += ":";
+  strMac += String(_mac[5], HEX);
+  strMac.toUpperCase();
+
+  for (int i = 0; i < NUMBER_OF_FEATHERS;  i++) {
+    if (feathers[i].mac_address == strMac) {
+      return i;
+    }
+  }
+  return -1;
+}
+
 /*-----------------------------------------------*/
 
 void setup() {
   // Serial
   Serial.begin(115200);
-  Serial.println();
-  Serial.println();
+  Serial.println("");
+
+  // Feathers definitions
+  initFeathers();
 
   // Pins definitions
   pinMode(ERROR_LED, OUTPUT);
   pinMode(POSTN_LED, OUTPUT);
 
+  // Who Am I ?
+  featherId = guessFeather();
+  Serial.println("----------------------------------------");
+  Serial.print("feather Id : ");
+  Serial.println(featherId);
+  Serial.print("Name : ");
+  Serial.println(feathers[featherId].name);
+  Serial.print("Mac Address : ");
+  Serial.println(feathers[featherId].mac_address);
+  Serial.print( "IP : ");
+  Serial.println(feathers[featherId].ip);
+  Serial.print("Total Steps Number : ");
+  Serial.println(feathers[featherId].totalSteps);
+  Serial.println("----------------------------------------");
+
   // Wifi connection
-  byte mac[6];
-  WiFi.macAddress(mac);
   // IPs are static, DHCP does not look easy with arduino
   // My static IP
-  IPAddress ip = getIp(mac);
+  IPAddress ip = feathers[featherId].ip;
   IPAddress gateway(192, 168, 2, 1);
   IPAddress subnet(255, 255, 255, 0);
 
@@ -206,12 +249,11 @@ void setup() {
   Serial.println("");
 
   Serial.println("WiFi connected");
-  Serial.println("IP address: ");
+  Serial.print("IP address : ");
   Serial.println(WiFi.localIP());
-
   Serial.println("Starting UDP");
   Udp.begin(localPort);
-  Serial.print("Local port: ");
+  Serial.print("Local port : ");
   Serial.println(Udp.localPort());
   Serial.println("");
 

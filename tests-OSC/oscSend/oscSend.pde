@@ -99,10 +99,13 @@ void sendOSCBundle(NetAddress remoteLocation) {
 */
 void sendOSCBundle2(NetAddress remoteLocation) {
   OscBundle myBundle = new OscBundle();
+  println("Sending OSC bundle to " + remoteLocation.toString() );
   OscMessage myMessage = new OscMessage("/position");
   if (direction < 0) {
+    println("/position/0.0");
     myMessage.add(0.0);
   } else {
+    println("/position/1.0");
     myMessage.add(1.0);
   }
   myBundle.add(myMessage);

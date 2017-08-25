@@ -54,6 +54,8 @@
 #define ERROR_LED   0
 #define POSTN_LED   4
 #define NUMBER_OF_FEATHERS 4
+#define MONITORING_IP IPAddress(192, 168, 2, 40)
+#define MONITORING_PORT 12000
 
 // Structure to declare all the feathers of the install
 // This helps a lot keeping this code unique for all devices.
@@ -229,9 +231,10 @@ String featherInfo() {
   str += humanReadableIp(feathers[featherId].ip);
   //String(_ip[0]) + String(".") + String(_ip[1]) + String(".") + String(_ip[2]) + String(".") + String(_ip[3]);
   str += "\nTotal Steps Number : ";
-  str += feathers[featherId].totalSteps + " steps";
+  str += feathers[featherId].totalSteps;
   str += "\nSpeed : ";
-  str += feathers[featherId].speed + " rpm";
+  str += feathers[featherId].speed;
+  str += " rpm";
   str += "\n----------------------------------------\n";
   return str;
 }
@@ -274,7 +277,7 @@ void readOSCBundle() {
 /*
    Reading OSC Bundles on the network
 */
-void SendOSCBundle(IPAddress ip, String path, float value) {
+void sendOSCBundle(IPAddress ip, int port, String path, float value) {
   OSCBundle bundle;
 
   Serial.print("Sending OSC Bundle to " + humanReadableIp(ip));
@@ -282,7 +285,7 @@ void SendOSCBundle(IPAddress ip, String path, float value) {
   Serial.println(value);
 
   bundle.add("/position").add(value);
-  Udp.beginPacket(ip, localPort);
+  Udp.beginPacket(ip, port);
   bundle.send(Udp); // send the bytes to the SLIP stream
   Udp.endPacket(); // mark the end of the OSC Packet
   bundle.empty(); // empty the bundle to free room for a new one
@@ -419,8 +422,8 @@ void positionChange(OSCMessage &msg) {
       // close all others stores
       for (int i = 0; i < NUMBER_OF_FEATHERS; i++) {
         if (i != featherId) {
-          SendOSCBundle(IPAddress(feathers[i].ip), "/position", 0.0);
-        }
+          sendOSCBundle(IPAddress(feathers[i].ip), localPort, "/position", 0.0);
+        } 
       }
       // Open
       openStore();
@@ -445,6 +448,7 @@ void positionChange(OSCMessage &msg) {
 void openStore() {
   Serial.println("Open : Double coil steps FORWARD");
   myMotor->step(feathers[featherId].totalSteps, FORWARD, DOUBLE);
+  sendOSCBundle(MONITORING_IP, MONITORING_PORT, "/position", 1.0);
 }
 
 /*
@@ -453,5 +457,6 @@ void openStore() {
 void closeStore() {
   Serial.println("Close : Double coil steps BACKWARD");
   myMotor->step(feathers[featherId].totalSteps, BACKWARD, DOUBLE);
+  sendOSCBundle(MONITORING_IP, MONITORING_PORT, "/position", 0.0);
 }
 

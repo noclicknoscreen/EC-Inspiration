@@ -1,8 +1,10 @@
 /**
- * oscP5bundle by andreas schlegel
- * an osc broadcast server.
- * example shows how to create and send osc bundles. 
- * oscP5 website at http://www.sojamo.de/oscP5
+ * oscSend : Programme de test des volets
+ * EuroCaves/Inspiration
+ * PIerre-Gilles Levallois pour Noclick.noscreen_
+ *
+ * L'interface comporte 4 volets sur lesquels on clique pour fermer ou ouvrir
+ * 
  */
 
 import oscP5.*;

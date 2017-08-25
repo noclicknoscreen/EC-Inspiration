@@ -3,6 +3,29 @@
   Written, maintained by Dudley smith / Pierre-Gilles Levallois
   V 0.1.0
 
+  Le feather reçoit un bundle Osc 0 (fermer le volet) ou 1 (ouvrir le volet)
+  S'il reçoit 0 : 
+   1. Il enclenche le moteur pour fermeture du volet
+   2. Il ignore tous les autres messages OSC tant qu'il n'a pas finit la fermeture
+   3. Il donne envoi sa position en OSC (le nombre de pas restant à parcourir / Nombre de pas total)
+
+   S'il reçoit 1 :
+   1. Il envoie des messages OSC de fermeture des volet à tout ses collègues
+   2. Il enclenche le moteur pour ouverture du volet.
+   3. Il ignore tous les autres messages OSC tant qu'il n'a pas finit l'ouverture.
+   4. Il brodcaste sa position en OSC (le nombre de pas restant à parcourir / Nombre de pas total)
+   
+  --------------------------------------------------------------------------------------------- */
+  
+/*---------------------------------------------------------------------------------------------
+    TODO : 
+      - variable globale de position à gérer
+      - constante définissant l'ip du serveur vidéo (ou alors trouver un moyen de brodcaster la position)
+      - Structure globale de configuration 
+          - addr MAC
+          - IP
+          - nombre de pas ( fonction de la longueur du volet)
+      - Ignorer tous les messages OSC pendant la manoeuvre.    
   --------------------------------------------------------------------------------------------- */
 
 // --------------------------------------------------------------------------------------
@@ -213,6 +236,7 @@ void setup() {
   server.on("/position", handlePosition);
   server.on("/open", handleOpen);
   server.on("/close", handleClose);
+  server.on("/pause", handlePause);
   server.onNotFound(handleNotFound);
   server.begin();
   Serial.println("HTTP server started");
@@ -291,8 +315,8 @@ void positionChange(OSCMessage &msg) {
   Serial.print(nextPosition);
   Serial.print(" receivedPosition : ");
   Serial.println(receivedPosition);
-  Serial.print(" Running to the motor for ");
-  Serial.println(stepsNumber);
+  Serial.print(", Running to the motor for ");
+  Serial.print(stepsNumber);
   Serial.println(" steps");
 
   // how do we know the direction ?

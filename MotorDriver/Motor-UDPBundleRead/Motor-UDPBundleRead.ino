@@ -22,7 +22,7 @@
 /*---------------------------------------------------------------------------------------------
     TODO :
       - constante définissant l'ip du serveur vidéo (ou alors trouver un moyen de brodcaster la position)
-      
+
   --------------------------------------------------------------------------------------------- */
 
 // --------------------------------------------------------------------------------------
@@ -229,7 +229,9 @@ String featherInfo() {
   str += humanReadableIp(feathers[featherId].ip);
   //String(_ip[0]) + String(".") + String(_ip[1]) + String(".") + String(_ip[2]) + String(".") + String(_ip[3]);
   str += "\nTotal Steps Number : ";
-  str += feathers[featherId].totalSteps;
+  str += feathers[featherId].totalSteps + " steps";
+  str += "\nSpeed : ";
+  str += feathers[featherId].speed + " rpm";
   str += "\n----------------------------------------\n";
   return str;
 }
@@ -273,15 +275,17 @@ void readOSCBundle() {
    Reading OSC Bundles on the network
 */
 void SendOSCBundle(IPAddress ip, String path, float value) {
+  OSCBundle bundle;
+
   Serial.print("Sending OSC Bundle to " + humanReadableIp(ip));
   Serial.print(" : " + path + "/");
   Serial.println(value);
-  OSCMessage msg("/position");
-  msg.add(value);
+
+  bundle.add("/position").add(value);
   Udp.beginPacket(ip, localPort);
-  msg.send(Udp);
-  Udp.endPacket();
-  msg.empty();
+  bundle.send(Udp); // send the bytes to the SLIP stream
+  Udp.endPacket(); // mark the end of the OSC Packet
+  bundle.empty(); // empty the bundle to free room for a new one
 }
 
 /*-----------------------------------------------

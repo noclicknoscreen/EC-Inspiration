@@ -58,6 +58,7 @@
 #define POSTN_LED   4
 #define MANUAL_UP_PIN 5
 #define MANUAL_DOWN_PIN 2
+#define MANUAL_RESET_PIN 0
 
 #define NUMBER_OF_FEATHERS 4
 #define MONITORING_IP IPAddress(192, 168, 2, 40)
@@ -143,8 +144,6 @@ ESP8266WebServer server(80);
 //  Position
 unsigned int receivedPosition = 0; // LOW means led is *on*
 boolean ignore_osc_messages = false; // if false, then listen and read OSC event. Otherwise waiting for finish movement
-int manual_steps_count = 0; // steps counter when calibrating the store manually
-
 
 /*************************************************
    Writing a float in EEPROM
@@ -336,7 +335,6 @@ void sendOSCBundle(IPAddress ip, int port, String path, float value) {
 void setup() {
   // Serial
   Serial.begin(115200);
-  delay(2000);
   Serial.println("");
 
   // Feathers definitions
@@ -350,6 +348,8 @@ void setup() {
   digitalWrite(MANUAL_UP_PIN, HIGH);
   pinMode(MANUAL_DOWN_PIN, INPUT);  // For manual closing
   digitalWrite(MANUAL_DOWN_PIN, HIGH);
+  pinMode(MANUAL_RESET_PIN, INPUT);  // For manual reseting of the total Steps
+  digitalWrite(MANUAL_RESET_PIN, HIGH);
 
   // Who Am I ?
   featherId = guessFeather();
@@ -386,8 +386,13 @@ void setup() {
   WiFi.config(ip, gateway, subnet);
   WiFi.begin(ssid, pass);
 
+  int k = 0;
   while (WiFi.status() != WL_CONNECTED) {
     Serial.print(".");
+    if (k % 80 == 0) {
+      Serial.println("");
+    }
+    k++;
     ledBlink(ERROR_LED, 100);
     delay(100);
   }
@@ -428,9 +433,6 @@ void setup() {
   Serial.println("HTTP server started");
   Serial.println("");
 
-  // Init other variables
-  manual_steps_count = 0;
-
 }
 
 /*-----------------------------------------------
@@ -441,14 +443,12 @@ void loop() {
   // Setting up totalSteps by manual motor driving
   if ( digitalRead(MANUAL_UP_PIN ) == LOW) {
     // 1. running motor step by step
-    manual_steps_count += STEPPING_ADJUST;
     openStore(STEPPING_ADJUST);
-    Serial.print(" ------>  Set total steps to : ");
-    Serial.println(manual_steps_count);
     // 2. Saving totalSteps into EEPROM
-    int old_value = int(eeprom_read(feathers[featherId].eeprom_addr));
-    eeprom_write(feathers[featherId].eeprom_addr, old_value + STEPPING_ADJUST);
-    feathers[featherId].totalSteps = manual_steps_count;
+    eeprom_write(feathers[featherId].eeprom_addr, feathers[featherId].totalSteps + STEPPING_ADJUST);
+    feathers[featherId].totalSteps += STEPPING_ADJUST;
+    Serial.print(" ------>  Set total steps to : ");
+    Serial.println(feathers[featherId].totalSteps);
   }
 
   // Closing manually the door
@@ -459,12 +459,20 @@ void loop() {
     Serial.println(")");
   }
 
+  // Reset Total Steps manually
+  if ( digitalRead(MANUAL_RESET_PIN) == LOW ) {
+    Serial.println(" ------>  Reset total steps to 0");
+    eeprom_write(feathers[featherId].eeprom_addr, 0);
+    feathers[featherId].totalSteps = 0;
+    digitalWrite(MANUAL_RESET_PIN, HIGH); 
+    delay(1000);
+  }
+
   // Control the connection (led #0)
   if (WiFi.status() != WL_CONNECTED) {
     // not connected => Message + Blink Short
     Serial.println("Wifi Not Connected :(");
     errorBlink(ERROR_LED, 100);
-
   } else {
 
     if ( feathers[featherId].totalSteps == 0 ) {

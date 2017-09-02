@@ -20,8 +20,6 @@
   --------------------------------------------------------------------------------------------- */
 
 /*---------------------------------------------------------------------------------------------
-    TODO :
-      - constante définissant l'ip du serveur vidéo (ou alors trouver un moyen de brodcaster la position)
 
   --------------------------------------------------------------------------------------------- */
 
@@ -38,7 +36,7 @@
 #include <OSCData.h>
 
 // --------------------------------------------------------------------------------------
-// Next, motor driving files
+// Motor driving files
 // --------------------------------------------------------------------------------------
 #include <Wire.h>
 #include <Adafruit_MotorShield.h>
@@ -49,13 +47,23 @@
 #include <NCNS-ArduinoTools.h>
 
 // --------------------------------------------------------------------------------------
+// Eeprom features
+// --------------------------------------------------------------------------------------
+#include <EEPROM.h>
+
+// --------------------------------------------------------------------------------------
 // Global declarations
 
 #define ERROR_LED   0
 #define POSTN_LED   4
+#define MANUAL_UP_PIN 5
+#define MANUAL_DOWN_PIN 2
+
 #define NUMBER_OF_FEATHERS 4
 #define MONITORING_IP IPAddress(192, 168, 2, 40)
 #define MONITORING_PORT 12000
+
+#define STEPPING_ADJUST 20 // Number of steps used in manually adjusting
 
 // Structure to declare all the feathers of the install
 // This helps a lot keeping this code unique for all devices.
@@ -63,6 +71,7 @@ typedef struct {
   String name;
   String mac_address;
   IPAddress ip;
+  int eeprom_addr;  // EEPROM Address to store/read value of totalSteps after
   int totalSteps;
   int stepsByRevolution;
   int speed;
@@ -78,30 +87,34 @@ void initFeathers() {
   feathers[0].name = "Feather 1 - Volet de la Cave T";
   feathers[0].mac_address = "60:1:94:19:EC:A8";
   feathers[0].ip = IPAddress(192, 168, 2, 12);
-  feathers[0].totalSteps = 5000;
+  feathers[0].eeprom_addr = 0;
+  feathers[0].totalSteps = 0;
   feathers[0].stepsByRevolution = 200; // nb de pas par tour
   feathers[0].speed = 50; // rpm
 
   feathers[1].name = "Feather 2 - Volet de la Cave Z";
   feathers[1].mac_address = "5C:CF:7F:3A:1B:8E";
   feathers[1].ip = IPAddress(192, 168, 2, 13);
-  feathers[1].totalSteps = 500;
+  feathers[1].eeprom_addr = 0;
+  feathers[1].totalSteps = 0;
   feathers[1].stepsByRevolution = 200; // nb de pas par tour
   feathers[1].speed = 50; // rpm
 
   feathers[2].name = "Feather 3 - Volet de la Cave Y";
   feathers[2].mac_address = "5C:CF:7F:3A:39:41";
   feathers[2].ip = IPAddress(192, 168, 2, 14);
-  feathers[2].totalSteps = 300;
+  feathers[2].eeprom_addr = 0;
+  feathers[2].totalSteps = 0;
   feathers[2].stepsByRevolution = 200; // nb de pas par tour
   feathers[2].speed = 50; // rpm
 
   feathers[3].name = "Feather 4 - Volet de la Cave X";
   feathers[3].mac_address = "5C:CF:7F:3A:2D:73";
   feathers[3].ip = IPAddress(192, 168, 2, 15);
-  feathers[3].totalSteps = 1000;
+  feathers[3].eeprom_addr = 0;
+  feathers[3].totalSteps = 0;
   feathers[3].stepsByRevolution = 200; // nb de pas par tour
-  feathers[3].speed = 50; // rpm
+  feathers[3].speed = 500; // rpm
 
 }
 
@@ -130,6 +143,32 @@ ESP8266WebServer server(80);
 //  Position
 unsigned int receivedPosition = 0; // LOW means led is *on*
 boolean ignore_osc_messages = false; // if false, then listen and read OSC event. Otherwise waiting for finish movement
+int manual_steps_count = 0; // steps counter when calibrating the store manually
+
+
+/*************************************************
+   Writing a float in EEPROM
+ **************************************************/
+void eeprom_write(int addr, float f) {
+  unsigned char *buf = (unsigned char*)(&f);
+  for ( int i = 0 ; i < (int)sizeof(f) ; i++ ) {
+    EEPROM.write(addr + i, buf[i]);
+  }
+  EEPROM.commit();
+}
+
+/*************************************************
+   Reading a float from EEPROM
+ **************************************************/
+float eeprom_read(int addr) {
+  float f;
+  unsigned char *buf = (unsigned char*)(&f);
+  for ( int i = 0 ; i < (int)sizeof(f) ; i++ ) {
+    buf[i] = EEPROM.read(addr + i);
+  }
+  return f;
+}
+
 
 /*-----------------------------------------------*
      Handle to /close, /open and /position (or /)
@@ -157,18 +196,18 @@ void handlePosition() {
 void handleOpen() {
   Serial.println("Requested '/open'");
   server.send(200, "text/json", "{ value : '', message : 'Opening the store...' }");
-  openStore();
+  openStore(feathers[featherId].totalSteps);
 }
 
 void handleClose() {
   Serial.println("Requested '/close'");
   server.send(200, "text/json", "{ value : '', message : 'Closing the store...' }");
-  closeStore();
+  closeStore(feathers[featherId].totalSteps);
 }
 
 void handlePause() {
   Serial.println("Requested '/pause'");
-  server.send(200, "text/json", "{ value : '', message : 'The store is paused' }");
+  server.send(200, "text/json", "{ value : '', message : 'The store is paused (TODO) ' }");
 }
 
 void handleNotFound() {
@@ -297,6 +336,7 @@ void sendOSCBundle(IPAddress ip, int port, String path, float value) {
 void setup() {
   // Serial
   Serial.begin(115200);
+  delay(2000);
   Serial.println("");
 
   // Feathers definitions
@@ -306,8 +346,27 @@ void setup() {
   pinMode(ERROR_LED, OUTPUT);
   pinMode(POSTN_LED, OUTPUT);
 
+  pinMode(MANUAL_UP_PIN, INPUT);    // For manual opening
+  digitalWrite(MANUAL_UP_PIN, HIGH);
+  pinMode(MANUAL_DOWN_PIN, INPUT);  // For manual closing
+  digitalWrite(MANUAL_DOWN_PIN, HIGH);
+
   // Who Am I ?
   featherId = guessFeather();
+
+  // Read stored values of totalStep in EEPROM
+  Serial.print("Reading total steps for feather #");
+  Serial.print(featherId);
+  Serial.println(" in EEPROM...");
+  EEPROM.begin(128);  // 0 to 4096
+  int val = int(eeprom_read(feathers[featherId].eeprom_addr));
+  Serial.print("Read : ");
+  Serial.println(val);
+  // If eeprom has never been initialized, it may have a big ramdom value, so set it to 0.
+  if (val > 999999) {
+    val = 0;
+  }
+  feathers[featherId].totalSteps = val;
   Serial.print(featherInfo());
 
   // Wifi connection
@@ -345,7 +404,7 @@ void setup() {
 
   // Stepper ignition
   Serial.println("init Stepper with 1.6kHz frequency...");
-  AFMS.begin(1600);  // create with the default frequency 1.6KHz
+  AFMS.begin();  // create with the default frequency 1.6KHz
   Serial.print("Set speed to ");
   Serial.print(feathers[featherId].speed);
   Serial.println(" rpm");
@@ -369,12 +428,36 @@ void setup() {
   Serial.println("HTTP server started");
   Serial.println("");
 
+  // Init other variables
+  manual_steps_count = 0;
+
 }
 
 /*-----------------------------------------------
                    L O O P
   ----------------------------------------------*/
 void loop() {
+
+  // Setting up totalSteps by manual motor driving
+  if ( digitalRead(MANUAL_UP_PIN ) == LOW) {
+    // 1. running motor step by step
+    manual_steps_count += STEPPING_ADJUST;
+    openStore(STEPPING_ADJUST);
+    Serial.print(" ------>  Set total steps to : ");
+    Serial.println(manual_steps_count);
+    // 2. Saving totalSteps into EEPROM
+    int old_value = int(eeprom_read(feathers[featherId].eeprom_addr));
+    eeprom_write(feathers[featherId].eeprom_addr, old_value + STEPPING_ADJUST);
+    feathers[featherId].totalSteps = manual_steps_count;
+  }
+
+  // Closing manually the door
+  if ( digitalRead(MANUAL_DOWN_PIN) == LOW) {
+    closeStore(STEPPING_ADJUST);
+    Serial.print(" ------>  Closing store step by step, (");
+    Serial.print(STEPPING_ADJUST);
+    Serial.println(")");
+  }
 
   // Control the connection (led #0)
   if (WiFi.status() != WL_CONNECTED) {
@@ -383,14 +466,24 @@ void loop() {
     errorBlink(ERROR_LED, 100);
 
   } else {
-    // Handle webserver
-    server.handleClient();
 
-    ledBlink(ERROR_LED, 1000);
+    if ( feathers[featherId].totalSteps == 0 ) {
 
-    // Then wait for OSC if all movements are achieved
-    if (!ignore_osc_messages) {
-      readOSCBundle();
+      Serial.println("Total steps not configured ! Please push the green button until the store is correctly opened...");
+      errorBlink(ERROR_LED, 500);
+
+    } else {
+
+      // Handle webserver
+      server.handleClient();
+
+      ledBlink(ERROR_LED, 1000);
+
+      // Then wait for OSC if all movements are achieved
+      if (!ignore_osc_messages) {
+        readOSCBundle();
+      }
+
     }
   }
 }
@@ -423,13 +516,15 @@ void positionChange(OSCMessage &msg) {
       for (int i = 0; i < NUMBER_OF_FEATHERS; i++) {
         if (i != featherId) {
           sendOSCBundle(IPAddress(feathers[i].ip), localPort, "/position", 0.0);
-        } 
+        }
       }
       // Open
-      openStore();
+      openStore(feathers[featherId].totalSteps);
+      sendOSCBundle(MONITORING_IP, MONITORING_PORT, "/position", 1.0);
     } else {
       // Close
-      closeStore();
+      closeStore(feathers[featherId].totalSteps);
+      sendOSCBundle(MONITORING_IP, MONITORING_PORT, "/position", 0.0);
     }
     currentPosition = nextPosition;
     ignore_osc_messages = false;
@@ -445,18 +540,22 @@ void positionChange(OSCMessage &msg) {
 /*
    Ouverture du store
 */
-void openStore() {
-  Serial.println("Open : Double coil steps FORWARD");
-  myMotor->step(feathers[featherId].totalSteps, FORWARD, DOUBLE);
-  sendOSCBundle(MONITORING_IP, MONITORING_PORT, "/position", 1.0);
+void openStore(int steps) {
+  Serial.print("motor runs for ");
+  Serial.print(steps);
+  Serial.println(", FORWARD.");
+  myMotor->setSpeed(feathers[featherId].speed);
+  myMotor->step(steps, FORWARD, DOUBLE);
 }
 
 /*
    Fermeture du store
 */
-void closeStore() {
-  Serial.println("Close : Double coil steps BACKWARD");
-  myMotor->step(feathers[featherId].totalSteps, BACKWARD, DOUBLE);
-  sendOSCBundle(MONITORING_IP, MONITORING_PORT, "/position", 0.0);
+void closeStore(int steps) {
+  Serial.print("motor runs for ");
+  Serial.print(steps);
+  Serial.println(", BACKWARD.");
+  myMotor->setSpeed(feathers[featherId].speed);
+  myMotor->step(steps, BACKWARD, DOUBLE);
 }
 

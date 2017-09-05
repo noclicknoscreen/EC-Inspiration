@@ -94,7 +94,7 @@ void initFeathers() {
   feathers[0].eeprom_addr = 0;
   feathers[0].totalSteps = 0;
   feathers[0].stepsByRevolution = 200; // nb de pas par tour
-  feathers[0].speed = 100; // rpm
+  feathers[0].speed = 100000; // 82 rpm
 
   feathers[1].name = "Feather 2 - Volet de la Cave Z";
   feathers[1].mac_address = "5C:CF:7F:3A:1B:8E";
@@ -102,7 +102,7 @@ void initFeathers() {
   feathers[1].eeprom_addr = 0;
   feathers[1].totalSteps = 0;
   feathers[1].stepsByRevolution = 200; // nb de pas par tour
-  feathers[1].speed = 100; // rpm
+  feathers[1].speed = 100000; // 82 rpm
 
   feathers[2].name = "Feather 3 - Volet de la Cave Y";
   feathers[2].mac_address = "5C:CF:7F:3A:39:41";
@@ -110,7 +110,7 @@ void initFeathers() {
   feathers[2].eeprom_addr = 0;
   feathers[2].totalSteps = 0;
   feathers[2].stepsByRevolution = 200; // nb de pas par tour
-  feathers[2].speed = 100; // rpm
+  feathers[2].speed = 100000; // 82 rpm
 
   feathers[3].name = "Feather 4 - Volet de la Cave X";
   feathers[3].mac_address = "5C:CF:7F:3A:2D:73";
@@ -118,7 +118,7 @@ void initFeathers() {
   feathers[3].eeprom_addr = 0;
   feathers[3].totalSteps = 0;
   feathers[3].stepsByRevolution = 200; // nb de pas par tour
-  feathers[3].speed = 100; // rpm
+  feathers[3].speed = 100000; // 82 rpm
 
 }
 
@@ -261,7 +261,6 @@ String humanReadableIp(IPAddress ip) {
 }
 
 String featherInfo() {
-  //IPAddress _ip = feathers[featherId].ip;
   String str = "\n----------------------------------------";
   str += "\nfeather Id : ";
   str += featherId;
@@ -271,7 +270,6 @@ String featherInfo() {
   str += feathers[featherId].mac_address;
   str += "\nIP : ";
   str += humanReadableIp(feathers[featherId].ip);
-  //String(_ip[0]) + String(".") + String(_ip[1]) + String(".") + String(_ip[2]) + String(".") + String(_ip[3]);
   str += "\nTotal Steps Number : ";
   str += feathers[featherId].totalSteps;
   str += "\nSpeed : ";
@@ -532,11 +530,11 @@ void positionChange(OSCMessage &msg) {
       }
       // Open
       openStore(feathers[featherId].totalSteps);
-      sendOSCBundle(MONITORING_IP, MONITORING_PORT, "/position", 1.0);
+      sendOSCBundle(MONITORING_IP, MONITORING_PORT, "/feedback/position/" + featherId, 1.0);
     } else {
       // Close
       closeStore(feathers[featherId].totalSteps);
-      sendOSCBundle(MONITORING_IP, MONITORING_PORT, "/position", 0.0);
+      sendOSCBundle(MONITORING_IP, MONITORING_PORT, "/feedback/position/" + featherId, 0.0);
     }
     currentPosition = nextPosition;
     ignore_osc_messages = false;
@@ -575,6 +573,8 @@ void closeStore(int steps) {
     Serial.println(", BACKWARD.");
     myMotor->setSpeed(feathers[featherId].speed);
     myMotor->step(steps, BACKWARD, DOUBLE);
+    // Release motor : no need to maintain couple
+    myMotor->release();
     currentState = CLOSED_STATE;
   } else {
     Serial.println("The store is already closed !");

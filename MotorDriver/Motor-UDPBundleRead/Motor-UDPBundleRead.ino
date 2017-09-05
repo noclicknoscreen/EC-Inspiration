@@ -54,17 +54,20 @@
 // --------------------------------------------------------------------------------------
 // Global declarations
 
-#define ERROR_LED   0
-#define POSTN_LED   4
-#define MANUAL_UP_PIN 5
-#define MANUAL_DOWN_PIN 2
-#define MANUAL_RESET_PIN 0
+#define ERROR_LED         0
+#define POSTN_LED         2 //4
+#define MANUAL_UP_PIN     0 //5
+#define MANUAL_DOWN_PIN   12 // OK
+#define MANUAL_RESET_PIN  14 //15 //0
 
 #define NUMBER_OF_FEATHERS 4
 #define MONITORING_IP IPAddress(192, 168, 2, 40)
 #define MONITORING_PORT 12000
 
 #define STEPPING_ADJUST 20 // Number of steps used in manually adjusting
+#define CLOSED_STATE 0
+#define OPENED_STATE 1
+#define MOTORDEBUG
 
 // Structure to declare all the feathers of the install
 // This helps a lot keeping this code unique for all devices.
@@ -91,7 +94,7 @@ void initFeathers() {
   feathers[0].eeprom_addr = 0;
   feathers[0].totalSteps = 0;
   feathers[0].stepsByRevolution = 200; // nb de pas par tour
-  feathers[0].speed = 50; // rpm
+  feathers[0].speed = 100; // rpm
 
   feathers[1].name = "Feather 2 - Volet de la Cave Z";
   feathers[1].mac_address = "5C:CF:7F:3A:1B:8E";
@@ -99,7 +102,7 @@ void initFeathers() {
   feathers[1].eeprom_addr = 0;
   feathers[1].totalSteps = 0;
   feathers[1].stepsByRevolution = 200; // nb de pas par tour
-  feathers[1].speed = 50; // rpm
+  feathers[1].speed = 100; // rpm
 
   feathers[2].name = "Feather 3 - Volet de la Cave Y";
   feathers[2].mac_address = "5C:CF:7F:3A:39:41";
@@ -107,7 +110,7 @@ void initFeathers() {
   feathers[2].eeprom_addr = 0;
   feathers[2].totalSteps = 0;
   feathers[2].stepsByRevolution = 200; // nb de pas par tour
-  feathers[2].speed = 50; // rpm
+  feathers[2].speed = 100; // rpm
 
   feathers[3].name = "Feather 4 - Volet de la Cave X";
   feathers[3].mac_address = "5C:CF:7F:3A:2D:73";
@@ -115,7 +118,7 @@ void initFeathers() {
   feathers[3].eeprom_addr = 0;
   feathers[3].totalSteps = 0;
   feathers[3].stepsByRevolution = 200; // nb de pas par tour
-  feathers[3].speed = 500; // rpm
+  feathers[3].speed = 100; // rpm
 
 }
 
@@ -127,6 +130,7 @@ Adafruit_MotorShield AFMS = Adafruit_MotorShield(0x60); // Default address, no j
 // to motor port #2 (M3 and M4)
 Adafruit_StepperMotor *myMotor = AFMS.getStepper(200, 2);
 float currentPosition = 0.0; // We suppose that the store is closed at initial state.
+int currentState = CLOSED_STATE; // We suppose that the store is closed at initial state.
 
 // --------------------------------------------------------------------------------------
 // A UDP instance to let us send and receive packets over UDP
@@ -464,7 +468,7 @@ void loop() {
     Serial.println(" ------>  Reset total steps to 0");
     eeprom_write(feathers[featherId].eeprom_addr, 0);
     feathers[featherId].totalSteps = 0;
-    digitalWrite(MANUAL_RESET_PIN, HIGH); 
+    digitalWrite(MANUAL_RESET_PIN, HIGH);
     delay(1000);
   }
 
@@ -549,21 +553,31 @@ void positionChange(OSCMessage &msg) {
    Ouverture du store
 */
 void openStore(int steps) {
-  Serial.print("motor runs for ");
-  Serial.print(steps);
-  Serial.println(", FORWARD.");
-  myMotor->setSpeed(feathers[featherId].speed);
-  myMotor->step(steps, FORWARD, DOUBLE);
+  if (currentState != OPENED_STATE ) {
+    Serial.print("motor runs for ");
+    Serial.print(steps);
+    Serial.println(", FORWARD.");
+    myMotor->setSpeed(feathers[featherId].speed);
+    myMotor->step(steps, FORWARD, DOUBLE);
+    currentState = OPENED_STATE;
+  } else {
+    Serial.println("The store is already opened !");
+  }
 }
 
 /*
    Fermeture du store
 */
 void closeStore(int steps) {
-  Serial.print("motor runs for ");
-  Serial.print(steps);
-  Serial.println(", BACKWARD.");
-  myMotor->setSpeed(feathers[featherId].speed);
-  myMotor->step(steps, BACKWARD, DOUBLE);
+  if (currentState != CLOSED_STATE ) {
+    Serial.print("motor runs for ");
+    Serial.print(steps);
+    Serial.println(", BACKWARD.");
+    myMotor->setSpeed(feathers[featherId].speed);
+    myMotor->step(steps, BACKWARD, DOUBLE);
+    currentState = CLOSED_STATE;
+  } else {
+    Serial.println("The store is already closed !");
+  }
 }
 

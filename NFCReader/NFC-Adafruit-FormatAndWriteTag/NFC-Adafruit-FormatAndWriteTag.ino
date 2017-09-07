@@ -24,19 +24,44 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
+  char readChar;
+  String readString = "";
 
   Serial.println("Place your NDEF formatted Mifare Classic 1K card on the reader");
   Serial.println("and press any key to continue ...");
 
   // Wait for user input before proceeding
   while (!Serial.available());
-  while (Serial.available()) Serial.read();
 
+  // --
+  do {
+    // Concatenates every char
+    readChar = Serial.read();
+    readString += readChar;
+  } while (readChar != '\n');
+
+  // 1/ FORMAT
+  Serial.println("[ENTER] , now we format and write into the Tag :");
+  Serial.print("Sentence written : ");
+  Serial.println(readString);
   NfcWrapper.formatMifare();
 
+  // 2/ WRITE
+  NfcWrapper.writeMifareBlock(4, readString);
+
+  // 3/ READ CHECK
+  String valueString = NfcWrapper.readMifareBlock(4);
+  Serial.print("Sentence read : ");
+  Serial.println(valueString);
+
   // Wait a bit before trying again
-  Serial.println("\n\nDone!");
+  Serial.println("Done!");
+  Serial.println("-----------------------------------------");
+  Serial.println();
+  Serial.println();
   delay(1000);
+
+  // Then Flush
   Serial.flush();
   while (Serial.available()) Serial.read();
 

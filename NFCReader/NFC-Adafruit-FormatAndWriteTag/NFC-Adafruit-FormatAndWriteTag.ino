@@ -35,9 +35,16 @@ void loop() {
 
   // --
   do {
-    // Concatenates every char
-    readChar = Serial.read();
-    readString += readChar;
+    while (Serial.available() > 0) {
+      // Concatenates every char
+      readChar = Serial.read();
+      readString += readChar;
+    }
+    // --
+    //Serial.print("Char read : [");
+    //Serial.print(readChar);
+    //Serial.println("]");
+    // --
   } while (readChar != '\n');
 
   // 1/ FORMAT
@@ -53,7 +60,6 @@ void loop() {
   String valueString = NfcWrapper.readMifareBlock(4);
   Serial.print("Sentence read : ");
   Serial.println(valueString);
-
   // Wait a bit before trying again
   Serial.println("Done!");
   Serial.println("-----------------------------------------");

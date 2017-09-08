@@ -530,11 +530,11 @@ void positionChange(OSCMessage &msg) {
       }
       // Open
       openStore(feathers[featherId].totalSteps);
-      sendOSCBundle(MONITORING_IP, MONITORING_PORT, "/feedback/position/" + featherId, 1.0);
+      sendOSCBundle(MONITORING_IP, MONITORING_PORT, "/feedback/position" + char(featherId), 1.0);
     } else {
       // Close
       closeStore(feathers[featherId].totalSteps);
-      sendOSCBundle(MONITORING_IP, MONITORING_PORT, "/feedback/position/" + featherId, 0.0);
+      sendOSCBundle(MONITORING_IP, MONITORING_PORT, "/feedback/position" + char(featherId), 0.0);
     }
     currentPosition = nextPosition;
     ignore_osc_messages = false;

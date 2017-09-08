@@ -172,9 +172,32 @@ void actionPerformed (GUIEvent e) {
 
 /* incoming osc message are forwarded to the oscEvent method. */
 void oscEvent(OscMessage theOscMessage) {
+  int position;
   /* print the address pattern and the typetag of the received OscMessage */
   print("### received an osc message.");
   print(" addrpattern: "+theOscMessage.addrPattern());
   print(" typetag: "+theOscMessage.typetag());
   println(" timetag: "+theOscMessage.timetag());
+  
+  if (theOscMessage.addrPattern().equals("/feedback/position/0")) {
+    position = theOscMessage.get(0).intValue();
+    direction = (position == 0) ? -1 : 1;
+    changeLabel(volet1);
+  }
+  if (theOscMessage.addrPattern().equals("/feedback/position/1")) {
+    position = theOscMessage.get(0).intValue();
+    direction = (position == 0) ? -1 : 1;
+    changeLabel(volet2);
+  }
+  if (theOscMessage.addrPattern().equals("/feedback/position/2")) {
+    position = theOscMessage.get(0).intValue();
+    direction = (position == 0) ? -1 : 1;
+    changeLabel(volet3);
+  }
+  if (theOscMessage.addrPattern().equals("/feedback/position/3")) {
+    position = theOscMessage.get(0).intValue();
+    direction = (position == 0) ? -1 : 1;
+    changeLabel(volet4);
+  }
+  
 }

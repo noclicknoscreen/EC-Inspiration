@@ -12,19 +12,16 @@ void setup() {
   // Init the serial
   Serial.begin(115200);
   pinMode(CTRL_LED, OUTPUT);
-
   // Init the Shield
   NFCInit();
-
   // Init connection
-  OscInit();
-
+  //OscInit();
 }
 
 void loop() {
 
   // Check connection and talk about it
-  wifiCheck();
+  //wifiCheck();
 
   char currentTag = nfcGetNewTag();
 
@@ -56,6 +53,13 @@ void loop() {
   // nothing, print a dot
   // --------------------------------------------------
   else {
-    Serial.print(".");
+    
+    Serial.print("Current Tag : [");
+    Serial.print(String(currentTag));
+    Serial.print("]");
+    Serial.print(" Last Tag : [");
+    Serial.print(String(lastTag));
+    Serial.println("]");
+    
   }
 }

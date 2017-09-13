@@ -131,19 +131,19 @@ int incBonus(int _bonus) {
 
 int getNextBonus(char _tag) {
 
-  if (_tag == 'X') {
+  if (_tag == 'X' || _tag == 'x') {
     // -----------------------------------
     xColBonus = incBonus(xColBonus);
     return xColBonus;
-  } else if (_tag == 'S') {
+  } else if (_tag == 'S' || _tag == 's') {
     // -----------------------------------
     sColBonus = incBonus(sColBonus);
     return sColBonus;
-  } else if (_tag == 'M') {
+  } else if (_tag == 'M' || _tag == 'm') {
     // -----------------------------------
     mColBonus = incBonus(mColBonus);
     return mColBonus;
-  } else if (_tag == 'L') {
+  } else if (_tag == 'L' || _tag == 'l') {
     // -----------------------------------
     lColBonus = incBonus(lColBonus);
     return lColBonus;
@@ -155,16 +155,16 @@ int getNextBonus(char _tag) {
 
 int getCurrentBonus(char _tag) {
 
-  if (_tag == 'X') {
+  if (_tag == 'X' || _tag == 'x') {
     // -----------------------------------
     return xColBonus;
-  } else if (_tag == 'S') {
+  } else if (_tag == 'S' || _tag == 's') {
     // -----------------------------------
     return sColBonus;
-  } else if (_tag == 'M') {
+  } else if (_tag == 'M' || _tag == 'm') {
     // -----------------------------------
     return mColBonus;
-  } else if (_tag == 'L') {
+  } else if (_tag == 'L' || _tag == 'l') {
     // -----------------------------------
     return lColBonus;
   }
@@ -177,16 +177,16 @@ int getColumnIdx(char _tag) {
 
   int columnIdx = -1;
 
-  if (_tag == 'X') {
+  if (_tag == 'X' || _tag == 'x') {
     // -----------------------------------
     columnIdx = X_BASE_COL;
-  } else if (_tag == 'S') {
+  } else if (_tag == 'S' || _tag == 's') {
     // -----------------------------------
     columnIdx = S_BASE_COL;
-  } else if (_tag == 'M') {
+  } else if (_tag == 'M' || _tag == 'm') {
     // -----------------------------------
     columnIdx = M_BASE_COL;
-  } else if (_tag == 'L') {
+  } else if (_tag == 'L' || _tag == 'l') {
     // -----------------------------------
     columnIdx = L_BASE_COL;
   }

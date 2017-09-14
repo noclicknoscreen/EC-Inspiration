@@ -17,7 +17,7 @@ ServoWrapper myServo;
 
 int upState, dnState;
 int servoAdjustOld = 0;
-
+float startTime, endTime = 0;
 void setup()
 {
 
@@ -61,11 +61,13 @@ void loop()
       // UP
       upState = 1;
       dnState = 0;
+      startTime = millis();
     }
     if  (char(commande) == '2') {
       // D
       upState = 0;
       dnState = 1;
+      startTime = millis();
     }
   }
 #ifdef DEBUG
@@ -80,10 +82,9 @@ void loop()
   // -------------------------------------------------------
   int fcUpState = digitalRead(FC_UP);
   int fcDnState = digitalRead(FC_DN);
-  if (fcUpState == LOW && upState == HIGH) {
-    cmd_stop();
-  }
-  if (fcDnState == LOW && dnState == HIGH) {
+  if ( (fcUpState == LOW && upState == HIGH)
+       || (fcDnState == LOW && dnState == HIGH))
+  {
     cmd_stop();
   }
 
@@ -102,10 +103,10 @@ void loop()
   int sensorValue = analogRead(SERVO_ADJ);
   int servoAdjust = map(sensorValue, 0, 1023, -20, 20);
 #ifdef DEBUG
-    Serial.print("Read : ");
-    Serial.print(sensorValue);
-    Serial.print(", Adjusting value : ");
-    Serial.println(servoAdjust);
+  Serial.print("Read : ");
+  Serial.print(sensorValue);
+  Serial.print(", Adjusting value : ");
+  Serial.println(servoAdjust);
 #endif
 
   // Adusting Servo, if value has changed
@@ -135,12 +136,17 @@ void loop()
 }
 
 /*
- * Stopping the servo by setting all commands to zero
- */
+   Stopping the servo by setting all commands to zero
+*/
 void cmd_stop() {
   // STOP
   upState = 0;
   dnState = 0;
+  endTime = millis();
+  float timeElapsed = (endTime - startTime) / 1000;
+  Serial.print("Time elapsed : ");
+  Serial.print(String(timeElapsed));
+  Serial.println(" seconds.");
 }
 
 

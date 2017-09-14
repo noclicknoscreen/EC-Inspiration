@@ -131,11 +131,7 @@ void loop()
   } else {
     // Stop
     myServo.maintainCenter();
-
   }
-
-  delay(100);
-
 }
 
 /*

@@ -5,6 +5,9 @@
 
 ServoWrapper myServo;
 
+// Uncomment to display debug messages on serial
+// #define DEBUG
+
 #define PIN_UP 2
 #define PIN_DN 3
 #define FC_UP 5
@@ -39,13 +42,17 @@ void setup()
 
 void loop()
 {
-  // -----------------------------------------------------------------------
   //  upState = digitalRead(PIN_UP);
   //  dnState = digitalRead(PIN_DN);
   //
+  // -------------------------------------------------------
+  // Reading command on serial
+  // -------------------------------------------------------
   if (Serial.available() ) {
     int commande = Serial.read();
+#ifdef DEBUG
     Serial.println(char(commande));
+#endif
     if (char(commande) == '0') {
       // STOP
       cmd_stop();
@@ -61,14 +68,16 @@ void loop()
       dnState = 1;
     }
   }
-
+#ifdef DEBUG
   Serial.print("States [UP, DN] : [");
   Serial.print(upState);
   Serial.print(",");
   Serial.print(dnState);
   Serial.print("]");
-
-  // -----------------------------------------------------------------------
+#endif
+  // -------------------------------------------------------
+  // Reading FC sensors
+  // -------------------------------------------------------
   int fcUpState = digitalRead(FC_UP);
   int fcDnState = digitalRead(FC_DN);
   if (fcUpState == LOW && upState == HIGH) {
@@ -78,20 +87,26 @@ void loop()
     cmd_stop();
   }
 
+#ifdef DEBUG
   Serial.print(" : ");
   Serial.print("FC States [UP, DN] : [");
   Serial.print(fcUpState);
   Serial.print(",");
   Serial.print(fcDnState);
   Serial.println("]");
+#endif
 
   // -------------------------------------------------------
+  // Reading adusting value for servo, if changed
+  // -------------------------------------------------------
   int sensorValue = analogRead(SERVO_ADJ);
-  int servoAdjust = map(sensorValue, 0, 1023, -20, 20);//sensorValue * (5.0 / 1023.0);
-  //  Serial.print("Read : ");
-  //  Serial.print(sensorValue);
-  //  Serial.print(", Adjusting value : ");
-  //  Serial.println(servoAdjust);
+  int servoAdjust = map(sensorValue, 0, 1023, -20, 20);
+#ifdef DEBUG
+    Serial.print("Read : ");
+    Serial.print(sensorValue);
+    Serial.print(", Adjusting value : ");
+    Serial.println(servoAdjust);
+#endif
 
   // Adusting Servo, if value has changed
   if (servoAdjust != servoAdjustOld ) {
@@ -99,7 +114,9 @@ void loop()
     myServo.setup(SERVO_CTRL_PIN, servoAdjust);
   }
 
+  // -------------------------------------------------------
   // Running the SERVO
+  // -------------------------------------------------------
   if (upState == HIGH) {
     // Turn clockwise
     // 1 : Full speed clockwise
@@ -121,6 +138,9 @@ void loop()
 
 }
 
+/*
+ * Stopping the servo by setting all commands to zero
+ */
 void cmd_stop() {
   // STOP
   upState = 0;

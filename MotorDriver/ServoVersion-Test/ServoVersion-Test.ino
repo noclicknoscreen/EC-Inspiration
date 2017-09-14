@@ -1,25 +1,28 @@
 // http://www.bajdi.com
 // Rotating a continuous servo (tested with a SpringRC SM-S4306R)
 
-#include "NCNS-Servo.h" 
+#include "NCNS-Servo.h"
 
 ServoWrapper myServo;
 
 #define PIN_UP 2
 #define PIN_DN 3
-#define FC_UP 4
-#define FC_DN 5
+#define FC_UP 5
+#define FC_DN 4
+#define SERVO_CTRL_PIN 9
+#define SERVO_ADJ A0
 
 int upState, dnState;
- 
-void setup() 
-{ 
+int servoAdjustOld = 0;
 
-  Serial.begin(115200);
-  
-  // attaches the servo on pin 9 to the servo object 
+void setup()
+{
+
+  Serial.begin(9600);
+
+  // attaches the servo on pin 9 to the servo object
   // And set the center value to 90 (half of 0 - 180)
-  myServo.setup(9, -3);
+  myServo.setup(SERVO_CTRL_PIN, -3);
 
   // Set the pins to PULL_UP (HIGH is default)
   pinMode(PIN_UP, INPUT_PULLUP);
@@ -28,14 +31,36 @@ void setup()
   // Those are 3 contacts
   pinMode(FC_UP, INPUT_PULLUP);
   pinMode(FC_DN, INPUT_PULLUP);
-  
-} 
- 
-void loop() 
-{ 
+  // Set the the analog pin to center servo
+  pinMode(SERVO_ADJ, INPUT);
+  upState = 0;
+  dnState = 0;
+}
+
+void loop()
+{
   // -----------------------------------------------------------------------
-  upState = digitalRead(PIN_UP);
-  dnState = digitalRead(PIN_DN);
+  //  upState = digitalRead(PIN_UP);
+  //  dnState = digitalRead(PIN_DN);
+  //
+  if (Serial.available() ) {
+    int commande = Serial.read();
+    Serial.println(char(commande));
+    if (char(commande) == '0') {
+      // STOP
+      cmd_stop();
+    }
+    if (char(commande) == '1') {
+      // UP
+      upState = 1;
+      dnState = 0;
+    }
+    if  (char(commande) == '2') {
+      // D
+      upState = 0;
+      dnState = 1;
+    }
+  }
 
   Serial.print("States [UP, DN] : [");
   Serial.print(upState);
@@ -46,7 +71,13 @@ void loop()
   // -----------------------------------------------------------------------
   int fcUpState = digitalRead(FC_UP);
   int fcDnState = digitalRead(FC_DN);
-  
+  if (fcUpState == LOW && upState == HIGH) {
+    cmd_stop();
+  }
+  if (fcDnState == LOW && dnState == HIGH) {
+    cmd_stop();
+  }
+
   Serial.print(" : ");
   Serial.print("FC States [UP, DN] : [");
   Serial.print(fcUpState);
@@ -55,24 +86,46 @@ void loop()
   Serial.println("]");
 
   // -------------------------------------------------------
-  if(upState == LOW && fcUpState == LOW){
+  int sensorValue = analogRead(SERVO_ADJ);
+  int servoAdjust = map(sensorValue, 0, 1023, -20, 20);//sensorValue * (5.0 / 1023.0);
+  //  Serial.print("Read : ");
+  //  Serial.print(sensorValue);
+  //  Serial.print(", Adjusting value : ");
+  //  Serial.println(servoAdjust);
+
+  // Adusting Servo, if value has changed
+  if (servoAdjust != servoAdjustOld ) {
+    servoAdjustOld = servoAdjust;
+    myServo.setup(SERVO_CTRL_PIN, servoAdjust);
+  }
+
+  // Running the SERVO
+  if (upState == HIGH) {
     // Turn clockwise
     // 1 : Full speed clockwise
     // 0 : Would be stop
     // -1 : Full speed counterclockwise
     myServo.continousRotate(1);
-    
-  }else if(dnState == LOW && fcDnState == LOW){
+
+  } else if (dnState == HIGH) {
     // Turn counterclockwise
     myServo.continousRotate(-1);
-    
-  }else{
+
+  } else {
     // Stop
     myServo.maintainCenter();
-    
+
   }
-  
+
   delay(100);
 
-} 
+}
+
+void cmd_stop() {
+  // STOP
+  upState = 0;
+  dnState = 0;
+}
+
+
 

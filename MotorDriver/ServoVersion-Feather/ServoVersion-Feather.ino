@@ -30,7 +30,7 @@
    -> envoyer 1 pour monter
    -> envoyer 2 pour descendre
    -> envoyer 0 pour stopper
-   
+
   --------------------------------------------------------------------------------------------- */
 
 // Bunch of Ethernet, Wifi, UDP, WebServer and OSC
@@ -103,14 +103,68 @@ void initFeathers() {
 // A UDP instance to let us send and receive packets over UDP
 WiFiUDP Udp;
 const unsigned int localPort = 2390;        // local port to listen for UDP packets (here's where we send the packets)
+const unsigned int wwwPort = 80;            // www server port
 
 char ssid[] = "linksys-MedenAgan";          // your network SSID (name)
 char pass[] = "Edwood72";                   // your network password
 
+// Web server
+ESP8266WebServer server(wwwPort);
+
+// up and down Command
 int upState, dnState;
+// Keep previous adjust value for servo in memory
 int servoAdjustOld = 0;
+// Computing elapsed time
 float startTime, endTime = 0;
 
+// --------------------------------------------------------------------------------------
+//     Handle to /close, /open, /pause and / (root) for infos
+// --------------------------------------------------------------------------------------
+void handleRoot() {
+  Serial.println("Requested '/'");
+  String content = "{ value : 0.0, ";
+  content += "message : '";
+  content += featherInfo();
+  content += "\n\n/up to open the store.";
+  content += "\n/down to close the store.";
+  content += "\n/pause to pause the movement.";
+  content +=  "' }";
+  server.send(200, "text/json", content);
+}
+
+void handleUp() {
+  Serial.println("Requested '/open'");
+  server.send(200, "text/json", "{ value : '', message : 'Opening the store...' }");
+  cmd_up();
+}
+
+void handleDown() {
+  Serial.println("Requested '/close'");
+  server.send(200, "text/json", "{ value : '', message : 'Closing the store...' }");
+  cmd_dn();
+}
+
+void handlePause() {
+  Serial.println("Requested '/pause'");
+  server.send(200, "text/json", "{ value : '', message : 'The store is paused...' }");
+  cmd_stop();
+}
+
+void handleNotFound() {
+  String message = "File Not Found\n\n";
+  message += "URI: ";
+  message += server.uri();
+  message += "\nMethod: ";
+  message += (server.method() == HTTP_GET) ? "GET" : "POST";
+  message += "\nArguments: ";
+  message += server.args();
+  message += "\n";
+  for (uint8_t i = 0; i < server.args(); i++) {
+    message += " " + server.argName(i) + ": " + server.arg(i) + "\n";
+  }
+  server.send(404, "text/plain", message);
+}
 
 // --------------------------------------------------------------------------------------
 //   Reading OSC Bundles, and treat them with an callback
@@ -308,6 +362,22 @@ void setup()
   upState = 0;
   dnState = 0;
 
+  // Web server preparation
+  if (MDNS.begin("esp8266")) {
+    Serial.println("MDNS responder started");
+  }
+  server.on("/", handleRoot);
+  server.on("/up", handleUp);
+  server.on("/down", handleDown);
+  server.on("/pause", handlePause);
+  server.onNotFound(handleNotFound);
+  server.begin();
+  Serial.print("HTTP server started at http://");
+  Serial.print(humanReadableIp(feathers[featherId].ip));
+  Serial.print(":");
+  Serial.print(wwwPort);
+  Serial.print("/");
+  Serial.println("");
 
   Serial.print(featherInfo());
 }
@@ -339,6 +409,11 @@ void loop()
     // Reading command on serial
     // -------------------------------------------------------
     readSerialCommand();
+
+    // -------------------------------------------------------
+    // Handle Web server
+    // -------------------------------------------------------
+    server.handleClient();
 
     // -------------------------------------------------------
     // Reading FC sensors
@@ -453,6 +528,11 @@ void positionChange(OSCMessage &msg) {
 // --------------------------------------------------------------------------------------
 void adjustChange(OSCMessage &msg) {
   int servoAdjust = constrain(msg.getInt(0), -20, 20);
+
+#ifdef DEBUG
+  Serial.print("/adjust: ");
+  Serial.print(servoAdjust);
+#endif
 
   // Adusting Servo, if value has changed
   if (servoAdjust != servoAdjustOld ) {

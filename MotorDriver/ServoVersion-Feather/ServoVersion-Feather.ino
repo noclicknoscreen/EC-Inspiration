@@ -42,10 +42,10 @@ ServoWrapper myServo;
 #define NUMBER_OF_FEATHERS 4
 
 // GPIO For feather Huzzah 4, 5, 2, 16, 0, 15
-#define ERROR_LED      0
-#define FC_UP          5
 #define FC_DN          4
+#define FC_UP          5
 #define SERVO_CTRL_PIN 2
+#define ERROR_LED      16
 
 // Structure to declare all the feathers of the install
 // This helps a lot keeping this code unique for all devices.
@@ -192,7 +192,7 @@ String featherInfo() {
   str += "\nIP : ";
   str += humanReadableIp(feathers[featherId].ip);
   str += "\nSpeed : ";
-  str += feathers[featherId].speed*100;
+  str += feathers[featherId].speed * 100;
   str += " %";
   str += "\n----------------------------------------\n";
   return str;
@@ -271,92 +271,102 @@ void setup()
 // Loop
 // --------------------------------------------------------------------------------------
 void loop()
-{  
+{
   // -------------------------------------------------------
-  // Reading command on serial
+  // Verifying wifi connection
   // -------------------------------------------------------
-  if (Serial.available() ) {
-    int commande = Serial.read();
+  if (WiFi.status() != WL_CONNECTED) {
+    // not connected => Message + Blink Short
+    Serial.println("Wifi Not Connected :(");
+    errorBlink(ERROR_LED, 100);
+  } else {
+
+    // -------------------------------------------------------
+    // Reading command on serial
+    // -------------------------------------------------------
+    if (Serial.available() ) {
+      int commande = Serial.read();
 #ifdef DEBUG
-    Serial.println(char(commande));
+      Serial.println(char(commande));
 #endif
-    if (char(commande) == '0') {
-      // STOP
+      if (char(commande) == '0') {
+        // STOP
+        cmd_stop();
+      }
+      if (char(commande) == '1') {
+        // UP
+        cmd_up();
+      }
+      if  (char(commande) == '2') {
+        // DN
+        cmd_dn();
+      }
+    }
+#ifdef DEBUG
+    Serial.print("States [UP, DN] : [");
+    Serial.print(upState);
+    Serial.print(",");
+    Serial.print(dnState);
+    Serial.print("]");
+#endif
+    // -------------------------------------------------------
+    // Reading FC sensors
+    // -------------------------------------------------------
+    int fcUpState = digitalRead(FC_UP);
+    int fcDnState = digitalRead(FC_DN);
+    if ( (fcUpState == LOW && upState == HIGH)
+         || (fcDnState == LOW && dnState == HIGH))
+    {
       cmd_stop();
     }
-    if (char(commande) == '1') {
-      // UP
-      cmd_up();
+
+#ifdef DEBUG
+    Serial.print(" : ");
+    Serial.print("FC States [UP, DN] : [");
+    Serial.print(fcUpState);
+    Serial.print(",");
+    Serial.print(fcDnState);
+    Serial.println("]");
+#endif
+
+    // -------------------------------------------------------
+    // Reading adusting value for servo, if changed
+    // -------------------------------------------------------
+    /*
+      int sensorValue = analogRead(SERVO_ADJ);
+      int servoAdjust = map(sensorValue, 0, 1023, -20, 20);
+      #ifdef DEBUG
+      Serial.print("Read : ");
+      Serial.print(sensorValue);
+      Serial.print(", Adjusting value : ");
+      Serial.println(servoAdjust);
+      #endif
+
+      // Adusting Servo, if value has changed
+      if (servoAdjust != servoAdjustOld ) {
+      servoAdjustOld = servoAdjust;
+      myServo.setup(SERVO_CTRL_PIN, servoAdjust);
+      }
+    */
+    // -------------------------------------------------------
+    // Running the SERVO
+    // -------------------------------------------------------
+    if (upState == HIGH) {
+      // Turn clockwise
+      // 1 : Full speed clockwise
+      // 0 : Would be stop
+      // -1 : Full speed counterclockwise
+      myServo.continousRotate(-1);
+
+    } else if (dnState == HIGH) {
+      // Turn counterclockwise
+      myServo.continousRotate(1);
+
+    } else {
+      // Stop
+      myServo.maintainCenter();
     }
-    if  (char(commande) == '2') {
-      // DN
-      cmd_dn();
-    }
-  }
-#ifdef DEBUG
-  Serial.print("States [UP, DN] : [");
-  Serial.print(upState);
-  Serial.print(",");
-  Serial.print(dnState);
-  Serial.print("]");
-#endif
-  // -------------------------------------------------------
-  // Reading FC sensors
-  // -------------------------------------------------------
-  int fcUpState = digitalRead(FC_UP);
-  int fcDnState = digitalRead(FC_DN);
-  if ( (fcUpState == LOW && upState == HIGH)
-       || (fcDnState == LOW && dnState == HIGH))
-  {
-    cmd_stop();
-  }
-
-#ifdef DEBUG
-  Serial.print(" : ");
-  Serial.print("FC States [UP, DN] : [");
-  Serial.print(fcUpState);
-  Serial.print(",");
-  Serial.print(fcDnState);
-  Serial.println("]");
-#endif
-
-  // -------------------------------------------------------
-  // Reading adusting value for servo, if changed
-  // -------------------------------------------------------
-  /*
-  int sensorValue = analogRead(SERVO_ADJ);
-  int servoAdjust = map(sensorValue, 0, 1023, -20, 20);
-#ifdef DEBUG
-  Serial.print("Read : ");
-  Serial.print(sensorValue);
-  Serial.print(", Adjusting value : ");
-  Serial.println(servoAdjust);
-#endif
-
-  // Adusting Servo, if value has changed
-  if (servoAdjust != servoAdjustOld ) {
-    servoAdjustOld = servoAdjust;
-    myServo.setup(SERVO_CTRL_PIN, servoAdjust);
-  }
-  */
-  // -------------------------------------------------------
-  // Running the SERVO
-  // -------------------------------------------------------
-  if (upState == HIGH) {
-    // Turn clockwise
-    // 1 : Full speed clockwise
-    // 0 : Would be stop
-    // -1 : Full speed counterclockwise
-    myServo.continousRotate(-1);
-
-  } else if (dnState == HIGH) {
-    // Turn counterclockwise
-    myServo.continousRotate(1);
-
-  } else {
-    // Stop
-    myServo.maintainCenter();
-  }
+  } // end else Wifi.status
 }
 
 // --------------------------------------------------------------------------------------

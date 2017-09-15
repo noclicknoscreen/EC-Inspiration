@@ -527,23 +527,19 @@ void positionChange(OSCMessage &msg) {
 //   Callback Function, called at every OSC bundle received
 // --------------------------------------------------------------------------------------
 void adjustChange(OSCMessage &msg) {
-  int servoAdjust = constrain(msg.getInt(0), -20, 20);
+  int servoAdjust = constrain(msg.getFloat(0), -20, 20);
 
-#ifdef DEBUG
   Serial.print("/adjust: ");
-  Serial.print(servoAdjust);
-#endif
+  Serial.println(servoAdjust);
 
   // Adusting Servo, if value has changed
   if (servoAdjust != servoAdjustOld ) {
     servoAdjustOld = servoAdjust;
     myServo.setup(SERVO_CTRL_PIN, servoAdjust);
 
-#ifdef DEBUG
     Serial.print("Adjust value has changed. Setting it to ");
     Serial.print(servoAdjust);
     Serial.println(".");
-#endif
   }
 }
 

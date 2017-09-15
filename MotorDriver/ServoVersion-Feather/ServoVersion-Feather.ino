@@ -17,6 +17,20 @@
    2. Il ignore tous les autres messages OSC tant qu'il n'a pas finit l'ouverture.
    3. Il envoie sa position en OSC (Ouvert)
 
+   Pilotage OSC :
+   --------------
+   -> /position : le feather lit un float 0.0 ou 1.0
+   qui donne l'ordre d'ouverture ou de fermeture du volet
+
+   -> /adjust :  le feather lit un entier entre -20 et 20 q
+   ui permet d'ajuster le centrage du servo-moteur.
+
+   Pilotage Serial :
+   -----------------
+   -> envoyer 1 pour monter
+   -> envoyer 2 pour descendre
+   -> envoyer 0 pour stopper
+   
   --------------------------------------------------------------------------------------------- */
 
 // Bunch of Ethernet, Wifi, UDP, WebServer and OSC
@@ -45,7 +59,7 @@ ServoWrapper myServo;
 #define FC_DN          4
 #define FC_UP          5
 #define SERVO_CTRL_PIN 2
-#define ERROR_LED      16
+#define ERROR_LED      0
 
 // Structure to declare all the feathers of the install
 // This helps a lot keeping this code unique for all devices.
@@ -119,6 +133,7 @@ void readOSCBundle() {
     if (!bundle.hasError()) {
       // Dispatch from Addresses received to callback functions
       bundle.dispatch("/position", positionChange);
+      bundle.dispatch("/adjust", adjustChange);
 
     } else {
       // Errors, print them
@@ -198,6 +213,36 @@ String featherInfo() {
   return str;
 }
 
+// --------------------------------------------------------------------------------------
+//   Reading Serial Command
+// --------------------------------------------------------------------------------------
+void readSerialCommand() {
+  if (Serial.available() ) {
+    int commande = Serial.read();
+#ifdef DEBUG
+    Serial.println(char(commande));
+#endif
+    if (char(commande) == '0') {
+      // STOP
+      cmd_stop();
+    }
+    if (char(commande) == '1') {
+      // UP
+      cmd_up();
+    }
+    if  (char(commande) == '2') {
+      // DN
+      cmd_dn();
+    }
+  }
+#ifdef DEBUG
+  Serial.print("States [UP, DN] : [");
+  Serial.print(upState);
+  Serial.print(",");
+  Serial.print(dnState);
+  Serial.print("]");
+#endif
+}
 // --------------------------------------------------------------------------------------
 // Setup
 // --------------------------------------------------------------------------------------
@@ -280,35 +325,21 @@ void loop()
     Serial.println("Wifi Not Connected :(");
     errorBlink(ERROR_LED, 100);
   } else {
+    //
+    // Nominal running : Status led gives a 1 sec pulse.
+    //
+    ledBlink(ERROR_LED, 1000);
+
+    // -------------------------------------------------------
+    // Reading OSC Bundles : /position & /adjust
+    // -------------------------------------------------------
+    readOSCBundle();
 
     // -------------------------------------------------------
     // Reading command on serial
     // -------------------------------------------------------
-    if (Serial.available() ) {
-      int commande = Serial.read();
-#ifdef DEBUG
-      Serial.println(char(commande));
-#endif
-      if (char(commande) == '0') {
-        // STOP
-        cmd_stop();
-      }
-      if (char(commande) == '1') {
-        // UP
-        cmd_up();
-      }
-      if  (char(commande) == '2') {
-        // DN
-        cmd_dn();
-      }
-    }
-#ifdef DEBUG
-    Serial.print("States [UP, DN] : [");
-    Serial.print(upState);
-    Serial.print(",");
-    Serial.print(dnState);
-    Serial.print("]");
-#endif
+    readSerialCommand();
+
     // -------------------------------------------------------
     // Reading FC sensors
     // -------------------------------------------------------
@@ -329,25 +360,6 @@ void loop()
     Serial.println("]");
 #endif
 
-    // -------------------------------------------------------
-    // Reading adusting value for servo, if changed
-    // -------------------------------------------------------
-    /*
-      int sensorValue = analogRead(SERVO_ADJ);
-      int servoAdjust = map(sensorValue, 0, 1023, -20, 20);
-      #ifdef DEBUG
-      Serial.print("Read : ");
-      Serial.print(sensorValue);
-      Serial.print(", Adjusting value : ");
-      Serial.println(servoAdjust);
-      #endif
-
-      // Adusting Servo, if value has changed
-      if (servoAdjust != servoAdjustOld ) {
-      servoAdjustOld = servoAdjust;
-      myServo.setup(SERVO_CTRL_PIN, servoAdjust);
-      }
-    */
     // -------------------------------------------------------
     // Running the SERVO
     // -------------------------------------------------------
@@ -402,7 +414,7 @@ void cmd_dn() {
 }
 
 // --------------------------------------------------------------------------------------
-//   Function callback, called at every OSC bundle received
+//   Callback Function, called at every OSC bundle received
 // --------------------------------------------------------------------------------------
 void positionChange(OSCMessage &msg) {
   // Possibly issue onto Millumin, so constrain the values; This should be 0.0 or 1.0
@@ -432,6 +444,25 @@ void positionChange(OSCMessage &msg) {
       Serial.print("The value was not suitable (");
       Serial.print(nextPosition);
       Serial.println("). This should be 0.0 or 1.0.");
+#endif
+  }
+}
+
+// --------------------------------------------------------------------------------------
+//   Callback Function, called at every OSC bundle received
+// --------------------------------------------------------------------------------------
+void adjustChange(OSCMessage &msg) {
+  int servoAdjust = constrain(msg.getInt(0), -20, 20);
+
+  // Adusting Servo, if value has changed
+  if (servoAdjust != servoAdjustOld ) {
+    servoAdjustOld = servoAdjust;
+    myServo.setup(SERVO_CTRL_PIN, servoAdjust);
+
+#ifdef DEBUG
+    Serial.print("Adjust value has changed. Setting it to ");
+    Serial.print(servoAdjust);
+    Serial.println(".");
 #endif
   }
 }

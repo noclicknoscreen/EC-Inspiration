@@ -1,5 +1,23 @@
-// http://www.bajdi.com
-// Rotating a continuous servo (tested with a SpringRC SM-S4306R)
+/*---------------------------------------------------------------------------------------------
+
+  Written, maintained by Dudley smith / Pierre-Gilles Levallois
+  Noclick.noscreen_
+  V 0.9.0
+
+   DHCP is not stable, enough  IP are static
+
+  Le feather reçoit un bundle Osc 0 (fermer le volet) ou 1 (ouvrir le volet)
+  S'il reçoit 0 :
+   1. Il enclenche le moteur pour fermeture du volet
+   2. Il ignore tous les autres messages OSC tant qu'il n'a pas finit la fermeture
+   3. Il envoie sa position en OSC (Ferme)
+
+   S'il reçoit 1 :
+   1. Il enclenche le moteur pour ouverture du volet.
+   2. Il ignore tous les autres messages OSC tant qu'il n'a pas finit l'ouverture.
+   3. Il envoie sa position en OSC (Ouvert)
+
+  --------------------------------------------------------------------------------------------- */
 
 // Bunch of Ethernet, Wifi, UDP, WebServer and OSC
 #include <ESP8266WiFi.h>
@@ -18,18 +36,54 @@
 ServoWrapper myServo;
 
 // Uncomment to display debug messages on serial
-#define DEBUG
-#define SERVO_DEBUG
+//#define DEBUG
+//#define SERVO_DEBUG
+
+#define NUMBER_OF_FEATHERS 4
 
 // GPIO For feather Huzzah 4, 5, 2, 16, 0, 15
 #define ERROR_LED      0
-#define PIN_UP         2
-#define PIN_DN         16
 #define FC_UP          5
 #define FC_DN          4
-#define SERVO_CTRL_PIN 15
-#define SERVO_ADJ      A0
+#define SERVO_CTRL_PIN 2
 
+// Structure to declare all the feathers of the install
+// This helps a lot keeping this code unique for all devices.
+typedef struct {
+  String name;
+  String mac_address;
+  IPAddress ip;
+  int speed;
+} Feather;
+
+
+Feather feathers[NUMBER_OF_FEATHERS];
+int featherId = 0;  // index of feather in the structure
+
+// --------------------------------------------------------------------------------------
+//  PARAMETRAGE DES FEATHERS DE L'INSTALLATION
+// --------------------------------------------------------------------------------------
+void initFeathers() {
+  feathers[0].name = "Feather 1 - Volet de la Cave M";
+  feathers[0].mac_address = "60:1:94:19:EC:A8";
+  feathers[0].ip = IPAddress(192, 168, 2, 12);
+  feathers[0].speed = 1; // 1 = 100% of speed
+
+  feathers[1].name = "Feather 2 - Volet de la Cave S";
+  feathers[1].mac_address = "5C:CF:7F:3A:1B:8E";
+  feathers[1].ip = IPAddress(192, 168, 2, 13);
+  feathers[1].speed = 1; // 1 = 100% of speed
+
+  feathers[2].name = "Feather 3 - Volet de la Cave L";
+  feathers[2].mac_address = "5C:CF:7F:3A:39:41";
+  feathers[2].ip = IPAddress(192, 168, 2, 14);
+  feathers[2].speed = 1; // 1 = 100% of speed
+
+  feathers[3].name = "Feather 4 - Volet de la Cave XS";
+  feathers[3].mac_address = "5C:CF:7F:3A:2D:73";
+  feathers[3].ip = IPAddress(192, 168, 2, 15);
+  feathers[3].speed = 1; // 1 = 100% of speed
+}
 
 // --------------------------------------------------------------------------------------
 // A UDP instance to let us send and receive packets over UDP
@@ -97,28 +151,120 @@ void sendOSCBundle(IPAddress ip, int port, String path, float value) {
 }
 
 // --------------------------------------------------------------------------------------
+//   Return the index in structure of all feather, taking mac adress in account
+// --------------------------------------------------------------------------------------
+int guessFeather() {
+  byte _mac[6];
+  WiFi.macAddress(_mac);
+  String strMac;
+  strMac += String(_mac[0], HEX);
+  strMac += ":";
+  strMac += String(_mac[1], HEX);
+  strMac += ":";
+  strMac += String(_mac[2], HEX);
+  strMac += ":";
+  strMac += String(_mac[3], HEX);
+  strMac += ":";
+  strMac += String(_mac[4], HEX);
+  strMac += ":";
+  strMac += String(_mac[5], HEX);
+  strMac.toUpperCase();
+
+  for (int i = 0; i < NUMBER_OF_FEATHERS;  i++) {
+    if (feathers[i].mac_address == strMac) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+// --------------------------------------------------------------------------------------
+//   Displaying Feather Technical infos
+// --------------------------------------------------------------------------------------
+String featherInfo() {
+  String str = "\n----------------------------------------";
+  str += "\nfeather Id : ";
+  str += featherId;
+  str += "\nName : ";
+  str += feathers[featherId].name;
+  str += "\nMac Address : ";
+  str += feathers[featherId].mac_address;
+  str += "\nIP : ";
+  str += humanReadableIp(feathers[featherId].ip);
+  str += "\nSpeed : ";
+  str += feathers[featherId].speed*100;
+  str += " %";
+  str += "\n----------------------------------------\n";
+  return str;
+}
+
+// --------------------------------------------------------------------------------------
 // Setup
 // --------------------------------------------------------------------------------------
 void setup()
 {
 
   Serial.begin(115200);
+  Serial.println("");
+
+  // Feathers definitions
+  initFeathers();
+  // Who Am I ?
+  featherId = guessFeather();
+
+  // Wifi connection
+  // IPs are static, DHCP does not look easy with arduino
+  // My static IP
+  IPAddress ip = feathers[featherId].ip;
+  IPAddress gateway(192, 168, 2, 1);
+  IPAddress subnet(255, 255, 255, 0);
+
+  // Connect to WiFi network
+  Serial.print("Connecting to SSID [");
+  Serial.print(ssid);
+  Serial.print("] pass [");
+  Serial.print(pass);
+  Serial.println("]");
+
+  WiFi.config(ip, gateway, subnet);
+  WiFi.begin(ssid, pass);
+
+  int k = 0;
+  while (WiFi.status() != WL_CONNECTED) {
+    Serial.print(".");
+    if (k % 80 == 0) {
+      Serial.println("");
+    }
+    k++;
+    ledBlink(ERROR_LED, 100);
+    delay(100);
+  }
+  Serial.println("");
+
+  Serial.println("WiFi connected");
+  Serial.print("IP address : ");
+  Serial.println(WiFi.localIP());
+  Serial.println("Starting UDP");
+  Udp.begin(localPort);
+  Serial.print("Local port : ");
+  Serial.println(Udp.localPort());
+  Serial.println("");
 
   // attaches the servo on pin 9 to the servo object
   // And set the center value to 90 (half of 0 - 180)
+  Serial.println("init servo-motor with 0° for center value...");
   myServo.setup(SERVO_CTRL_PIN, 0);
 
-  // Set the pins to PULL_UP (HIGH is default)
-  pinMode(PIN_UP, INPUT_PULLUP);
-  pinMode(PIN_DN, INPUT_PULLUP);
   // Set the end-of-course to Simple input
   // Those are 3 contacts
   pinMode(FC_UP, INPUT_PULLUP);
   pinMode(FC_DN, INPUT_PULLUP);
-  // Set the the analog pin to center servo
-  pinMode(SERVO_ADJ, INPUT);
+
   upState = 0;
   dnState = 0;
+
+
+  Serial.print(featherInfo());
 }
 
 // --------------------------------------------------------------------------------------
@@ -126,9 +272,6 @@ void setup()
 // --------------------------------------------------------------------------------------
 void loop()
 {  
-  //  upState = digitalRead(PIN_UP);
-  //  dnState = digitalRead(PIN_DN);
-  //
   // -------------------------------------------------------
   // Reading command on serial
   // -------------------------------------------------------
@@ -216,9 +359,9 @@ void loop()
   }
 }
 
-/*
-   Stopping the servo by setting all commands to zero
-*/
+// --------------------------------------------------------------------------------------
+//   Stopping the servo by setting all commands to zero
+// --------------------------------------------------------------------------------------
 void cmd_stop() {
   // STOP
   upState = 0;
@@ -230,27 +373,27 @@ void cmd_stop() {
   Serial.println(" seconds.");
 }
 
-/*
-   Starting the servo by setting all commands to UP
-*/
+// --------------------------------------------------------------------------------------
+//   Starting the servo by setting all commands to UP
+// --------------------------------------------------------------------------------------
 void cmd_up() {
   upState = 1;
   dnState = 0;
   startTime = millis();
 }
 
-/*
-   Starting the servo by setting all commands to DOWN
-*/
+// --------------------------------------------------------------------------------------
+//   Starting the servo by setting all commands to DOWN
+// --------------------------------------------------------------------------------------
 void cmd_dn() {
   upState = 0;
   dnState = 1;
   startTime = millis();
 }
 
-/*
-   Function callback, called at every OSC bundle received
-*/
+// --------------------------------------------------------------------------------------
+//   Function callback, called at every OSC bundle received
+// --------------------------------------------------------------------------------------
 void positionChange(OSCMessage &msg) {
   // Possibly issue onto Millumin, so constrain the values; This should be 0.0 or 1.0
   float nextPosition = constrain(msg.getFloat(0), 0.0, 1.0);

@@ -106,7 +106,7 @@ void setup()
 
   // attaches the servo on pin 9 to the servo object
   // And set the center value to 90 (half of 0 - 180)
-  myServo.setup(SERVO_CTRL_PIN, -3);
+  myServo.setup(SERVO_CTRL_PIN, 0);
 
   // Set the pins to PULL_UP (HIGH is default)
   pinMode(PIN_UP, INPUT_PULLUP);
@@ -204,11 +204,11 @@ void loop()
     // 1 : Full speed clockwise
     // 0 : Would be stop
     // -1 : Full speed counterclockwise
-    myServo.continousRotate(1);
+    myServo.continousRotate(-1);
 
   } else if (dnState == HIGH) {
     // Turn counterclockwise
-    myServo.continousRotate(-1);
+    myServo.continousRotate(1);
 
   } else {
     // Stop

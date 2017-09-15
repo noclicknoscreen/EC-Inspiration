@@ -6,17 +6,18 @@
 ServoWrapper myServo;
 
 // Uncomment to display debug messages on serial
-// #define DEBUG
+//#define DEBUG
+//#define SERVO_DEBUG
 
 #define PIN_UP 2
 #define PIN_DN 3
-#define FC_UP 5
 #define FC_DN 4
+#define FC_UP 6
 #define SERVO_CTRL_PIN 9
 #define SERVO_ADJ A0
 
 int upState, dnState;
-int servoAdjustOld = 0;
+int servoAdjust = 0, servoAdjustOld = 0;
 float startTime, endTime = 0;
 void setup()
 {
@@ -25,7 +26,7 @@ void setup()
 
   // attaches the servo on pin 9 to the servo object
   // And set the center value to 90 (half of 0 - 180)
-  myServo.setup(SERVO_CTRL_PIN, -3);
+  myServo.setup(SERVO_CTRL_PIN, 0);
 
   // Set the pins to PULL_UP (HIGH is default)
   pinMode(PIN_UP, INPUT_PULLUP);
@@ -86,6 +87,8 @@ void loop()
        || (fcDnState == LOW && dnState == HIGH))
   {
     cmd_stop();
+    // Debouncing The Limit Switches
+    delay(200);
   }
 
 #ifdef DEBUG
@@ -94,15 +97,16 @@ void loop()
   Serial.print(fcUpState);
   Serial.print(",");
   Serial.print(fcDnState);
-  Serial.println("]");
+  Serial.print("]");
 #endif
 
   // -------------------------------------------------------
   // Reading adusting value for servo, if changed
   // -------------------------------------------------------
   int sensorValue = analogRead(SERVO_ADJ);
-  int servoAdjust = map(sensorValue, 0, 1023, -20, 20);
+  servoAdjust = map(sensorValue, 0, 1023, -20, 20);
 #ifdef DEBUG
+  Serial.print(" : ");
   Serial.print("Read : ");
   Serial.print(sensorValue);
   Serial.print(", Adjusting value : ");
@@ -123,11 +127,11 @@ void loop()
     // 1 : Full speed clockwise
     // 0 : Would be stop
     // -1 : Full speed counterclockwise
-    myServo.continousRotate(1);
+    myServo.continousRotate(-1.5);
 
   } else if (dnState == HIGH) {
     // Turn counterclockwise
-    myServo.continousRotate(-1);
+    myServo.continousRotate(0.25);
 
   } else {
     // Stop

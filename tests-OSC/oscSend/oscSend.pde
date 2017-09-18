@@ -13,7 +13,8 @@ import interfascia.*;
 
 GUIController c;
 IFButton volet1, volet2, volet3, volet4;
-IFLabel l;
+IFTextField adj1, adj2, adj3, adj4;
+IFLabel l, l1, l2, l3, l4;
 
 IFLookAndFeel closedLook, openedLook;
 
@@ -35,20 +36,41 @@ void setup() {
   // Buttons as volets
   c = new GUIController (this);
   
-  volet1 = new IFButton ("Volet 1", 50, 60, 100, 200);
-  volet2 = new IFButton ("Volet 2", 180, 60, 100, 100);
-  volet3 = new IFButton ("Volet 3", 310, 60, 100, 140);
-  volet4 = new IFButton ("Volet 4", 440, 60, 100, 300);
+  volet1 = new IFButton ("Volet M", 50, 120, 100, 200);
+  volet2 = new IFButton ("Volet S", 180, 220, 100, 140);
+  volet3 = new IFButton ("Volet L", 310, 60, 100, 300);
+  volet4 = new IFButton ("Volet XS", 440, 200, 100, 100);
 
+  adj1 = new IFTextField("Adjust1", 50, 30, 100);
+  adj2 = new IFTextField("Adjust2", 180, 30, 100);
+  adj3 = new IFTextField("Adjust3", 310, 30, 100);
+  adj4 = new IFTextField("Adjust4", 440, 30, 100);
+
+  l1 = new IFLabel("", 50, 45);
+  l2 = new IFLabel("", 180, 45);
+  l3 = new IFLabel("", 310, 45);
+  l4 = new IFLabel("", 440, 45);
+  
   volet1.addActionListener(this);
   volet2.addActionListener(this);
   volet3.addActionListener(this);
   volet4.addActionListener(this);
+  
+  adj1.addActionListener(this);
+  adj2.addActionListener(this);
+  adj3.addActionListener(this);
+  adj4.addActionListener(this);
 
   c.add (volet1);
   c.add (volet2);
   c.add (volet3);
   c.add (volet4);
+
+  c.add (adj1);
+  c.add (adj2);
+  c.add (adj3);
+  c.add (adj4);
+
 
   openedLook = new IFLookAndFeel(this, IFLookAndFeel.DEFAULT);
   openedLook.baseColor = color(0, 0, 0);
@@ -113,6 +135,18 @@ void sendOSCBundle2(NetAddress remoteLocation) {
   oscP5.send(myBundle, remoteLocation);
 }
 
+void sendOSCBundleAdjust(NetAddress remoteLocation, IFTextField t) {
+  OscBundle myBundle = new OscBundle();
+  float val = float(t.getValue());
+  println("Sending OSC bundle to " + remoteLocation.toString() );
+  println("/adjust/" + val );
+  OscMessage myMessage = new OscMessage("/adjust");
+  myMessage.add(val);
+  myBundle.add(myMessage);
+  myBundle.setTimetag(myBundle.now() + 10000);
+  oscP5.send(myBundle, remoteLocation);
+}
+
 /*
 * Sends a unique osc message 1 or 0, depending of the direction parameter (-1.0, 1.0)
 */ 
@@ -138,36 +172,55 @@ void changeLabel(IFButton v) {
   }
 }
 
+void displayVal(IFLabel l, IFTextField t) {
+  l.setLabel(t.getValue());
+}
+
 void mousePressed() {
  
 }
 
 void actionPerformed (GUIEvent e) {
-  if (e.getSource() == volet1) {
-    //sendOSCMessage(myRemoteLocation1);
-    //sendOSCBundle(myRemoteLocation1);
-    sendOSCBundle2(myRemoteLocation1);
-    changeLabel(volet1);
-
-  } else if (e.getSource() == volet2) {
-    //sendOSCMessage(myRemoteLocation2);
-    //sendOSCBundle(myRemoteLocation2);
-    sendOSCBundle2(myRemoteLocation2);
-    changeLabel(volet2);
-
-  } else if (e.getSource() == volet3) {
-    //sendOSCMessage(myRemoteLocation3);
-    //sendOSCBundle(myRemoteLocation3);
-    sendOSCBundle2(myRemoteLocation3);
-    changeLabel(volet3);
-
-  } else if (e.getSource() == volet4) {
-    //sendOSCMessage(myRemoteLocation4);
-    //sendOSCBundle(myRemoteLocation4);
-    sendOSCBundle2(myRemoteLocation4);
-    changeLabel(volet4);
+  if (e.getSource() == volet1 || e.getSource() == volet2 || e.getSource() == volet3 || e.getSource() == volet4) {
+    if (e.getSource() == volet1) {
+      sendOSCBundle2(myRemoteLocation1);
+      changeLabel(volet1);
+  
+    } else if (e.getSource() == volet2) {
+      sendOSCBundle2(myRemoteLocation2);
+      changeLabel(volet2);
+  
+    } else if (e.getSource() == volet3) {
+      sendOSCBundle2(myRemoteLocation3);
+      changeLabel(volet3);
+  
+    } else if (e.getSource() == volet4) {
+      sendOSCBundle2(myRemoteLocation4);
+      changeLabel(volet4);
+    }
+    direction = -direction;
   }
-  direction = -direction;
+  
+  // For the text fields
+  if (e.getSource() == adj1 || e.getSource() == adj2 || e.getSource() == adj3 || e.getSource() == adj4) {
+    if (e.getSource() == adj1 && keyPressed == true && keyCode == ENTER) {
+      sendOSCBundleAdjust(myRemoteLocation1, adj1);
+      displayVal(l1, adj1);
+  
+    } else if (e.getSource() == adj2 && keyPressed == true && keyCode == ENTER) {
+      sendOSCBundleAdjust(myRemoteLocation2, adj2);
+      displayVal(l2, adj2);
+  
+    } else if (e.getSource() == adj3 && keyPressed == true && keyCode == ENTER) {
+      sendOSCBundleAdjust(myRemoteLocation3, adj3);
+      displayVal(l3, adj3);
+  
+    } else if (e.getSource() == adj4 && keyPressed == true && keyCode == ENTER) {
+      sendOSCBundleAdjust(myRemoteLocation4, adj4);
+      displayVal(l4, adj4);
+    }
+  
+  }
 }
 
 /* incoming osc message are forwarded to the oscEvent method. */

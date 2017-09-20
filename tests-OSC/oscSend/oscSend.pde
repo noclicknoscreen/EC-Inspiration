@@ -12,65 +12,98 @@ import netP5.*;
 import interfascia.*;
 
 GUIController c;
-IFButton volet1, volet2, volet3, volet4;
+IFButton voletX, voletS, voletM, voletL;
+
 IFTextField adj1, adj2, adj3, adj4;
 IFLabel l, l1, l2, l3, l4;
 
 IFLookAndFeel closedLook, openedLook;
 
-OscP5 oscP5;
-NetAddress myRemoteLocation1, myRemoteLocation2, myRemoteLocation3, myRemoteLocation4;
+IFRadioController tagController;
+IFRadioButton tagX, tagS, tagM, tagL, tagOff;
 
-float direction = 1;
+public static final int TAG_X_IDX = 3;
+public static final int TAG_S_IDX = 1;
+public static final int TAG_M_IDX = 0;
+public static final int TAG_L_IDX = 2;
+public static final int TAG_OFF_IDX = 4;
+
+OscP5 oscP5;
+NetAddress adrVoletX, adrVoletS, adrVoletM, adrVoletL;
+NetAddress adrMillumin;
+
+int directionX, directionS, directionM, directionL = 1;
+int currentColumn, columnX, columnS, columnM, columnL = 0;
 
 void setup() {
-  size(640,480);
+  size(640, 480);
   frameRate(25);
   /* start oscP5, listening for incoming messages at port 12000 */
-  oscP5 = new OscP5(this,12000);
-  myRemoteLocation1 = new NetAddress("192.168.2.12",2390);
-  myRemoteLocation2 = new NetAddress("192.168.2.13",2390);
-  myRemoteLocation3 = new NetAddress("192.168.2.14",2390);
-  myRemoteLocation4 = new NetAddress("192.168.2.15",2390);
-  
+  oscP5 = new OscP5(this, 2391);
+  adrVoletX = new NetAddress("192.168.2.12", 2390);
+  adrVoletS = new NetAddress("192.168.2.13", 2390);
+  adrVoletM = new NetAddress("192.168.2.14", 2390);
+  adrVoletL = new NetAddress("192.168.2.15", 2390);
+
+  adrMillumin = new NetAddress("127.0.0.1", 5000);
+
   // Buttons as volets
   c = new GUIController (this);
-  
-  volet1 = new IFButton ("Volet M", 50, 120, 100, 200);
-  volet2 = new IFButton ("Volet S", 180, 220, 100, 140);
-  volet3 = new IFButton ("Volet L", 310, 60, 100, 300);
-  volet4 = new IFButton ("Volet XS", 440, 200, 100, 100);
+
+  voletM = new IFButton ("Volet M", 50, 120, 100, 200);
+  voletS = new IFButton ("Volet S", 180, 220, 100, 140);
+  voletL = new IFButton ("Volet L", 310, 60, 100, 300);
+  voletX = new IFButton ("Volet XS", 440, 200, 100, 100);
 
   adj1 = new IFTextField("Adjust1", 50, 30, 100);
   adj2 = new IFTextField("Adjust2", 180, 30, 100);
   adj3 = new IFTextField("Adjust3", 310, 30, 100);
   adj4 = new IFTextField("Adjust4", 440, 30, 100);
 
+  tagController = new IFRadioController("Mode Selector");
+  tagM = new IFRadioButton ("tag M", 75, 400, tagController);
+  tagS = new IFRadioButton ("tag S", 205, 400, tagController);
+  tagL = new IFRadioButton ("tag L", 335, 400, tagController);
+  tagX = new IFRadioButton ("tag XS", 465, 400, tagController);
+  tagOff = new IFRadioButton ("tag Off", 535, 400, tagController);
+
   l1 = new IFLabel("", 50, 45);
   l2 = new IFLabel("", 180, 45);
   l3 = new IFLabel("", 310, 45);
   l4 = new IFLabel("", 440, 45);
-  
-  volet1.addActionListener(this);
-  volet2.addActionListener(this);
-  volet3.addActionListener(this);
-  volet4.addActionListener(this);
-  
+
+  voletX.addActionListener(this);
+  voletS.addActionListener(this);
+  voletM.addActionListener(this);
+  voletL.addActionListener(this);
+  /*
+  tagX.addActionListener(this);
+   tagS.addActionListener(this);
+   tagM.addActionListener(this);
+   tagL.addActionListener(this);
+   */
+  tagController.addActionListener(this);
+
   adj1.addActionListener(this);
   adj2.addActionListener(this);
   adj3.addActionListener(this);
   adj4.addActionListener(this);
 
-  c.add (volet1);
-  c.add (volet2);
-  c.add (volet3);
-  c.add (volet4);
+  c.add (voletX);
+  c.add (voletS);
+  c.add (voletM);
+  c.add (voletL);
 
   c.add (adj1);
   c.add (adj2);
   c.add (adj3);
   c.add (adj4);
 
+  c.add (tagX);
+  c.add (tagS);
+  c.add (tagM);
+  c.add (tagL);
+  c.add (tagOff);
 
   openedLook = new IFLookAndFeel(this, IFLookAndFeel.DEFAULT);
   openedLook.baseColor = color(0, 0, 0);
@@ -83,53 +116,36 @@ void setup() {
   closedLook.baseColor = color(255, 255, 255);
   closedLook.highlightColor = color(170, 170, 170);
 
-  volet1.setLookAndFeel(closedLook);
-  volet2.setLookAndFeel(closedLook);
-  volet3.setLookAndFeel(closedLook);
-  volet4.setLookAndFeel(closedLook);
+  voletX.setLookAndFeel(closedLook);
+  voletS.setLookAndFeel(closedLook);
+  voletM.setLookAndFeel(closedLook);
+  voletL.setLookAndFeel(closedLook);
+
+  tagM.setLookAndFeel(closedLook);
+  tagS.setLookAndFeel(closedLook);
+  tagL.setLookAndFeel(closedLook);
+  tagX.setLookAndFeel(closedLook);
+  tagOff.setLookAndFeel(closedLook);
 }
 
 void draw() {
-  background(255);  
-}
-
-/*
-* Sends an osc bundle from 0 to 1 by step of 0.05
-* Or from 1 to 0, depending of the direction parameter (-1.0, 1.0)
-*/
-void sendOSCBundle(NetAddress remoteLocation) {
-  OscBundle myBundle = new OscBundle();
-  float increment = 0.1;
-  println("-------------------------------------------------------");
-  for(float i = 0.0; i < 1.0 + increment; i = i + increment) {
-    OscMessage myMessage = new OscMessage("/position");
-    if (direction < 0) {
-      myMessage.add(1-i);
-      println(1-i);
-    } else {
-      myMessage.add(i);
-      println(i);
-    }
-    myBundle.add(myMessage);
-    myBundle.setTimetag(myBundle.now() + 10000);
-  }
-  oscP5.send(myBundle, remoteLocation);
+  background(255);
 }
 
 /*
 * Sends an osc bundle 0 or 1 by step depending of the direction parameter (-1.0, 1.0)
-*/
-void sendOSCBundle2(NetAddress remoteLocation) {
+ */
+void sendOSCBundleInt(NetAddress remoteLocation, String address, int value) {
   OscBundle myBundle = new OscBundle();
   println("Sending OSC bundle to " + remoteLocation.toString() );
-  OscMessage myMessage = new OscMessage("/position");
-  if (direction < 0) {
-    println("/position/0.0");
-    myMessage.add(0);
-  } else {
-    println("/position/1.0");
-    myMessage.add(1);
-  }
+
+  OscMessage myMessage = new OscMessage(address);
+  myMessage.add(value);
+
+  print(myMessage);
+  print(" : ");
+  println(value);
+
   myBundle.add(myMessage);
   myBundle.setTimetag(myBundle.now() + 10000);
   oscP5.send(myBundle, remoteLocation);
@@ -148,22 +164,10 @@ void sendOSCBundleAdjust(NetAddress remoteLocation, IFTextField t) {
 }
 
 /*
-* Sends a unique osc message 1 or 0, depending of the direction parameter (-1.0, 1.0)
-*/ 
-void sendOSCMessage(NetAddress remoteLocation) {
-  if (direction == -1.0 ) {
-    direction = 0.0;
-  }
-  OscMessage myMessage = new OscMessage("/position");
-  myMessage.add(direction);
-  oscP5.send(myMessage, remoteLocation);
-}
-
-/*
-* Chnager le libelle du volet
-*/
-void changeLabel(IFButton v) {
-  if (direction == -1.0) {
+* Changer le libelle du volet
+ */
+void changeLabelVolet(IFButton v, int direction) {
+  if (direction == 0) {
     v.setLabel("Closed");
     v.setLookAndFeel(closedLook);
   } else {
@@ -172,85 +176,167 @@ void changeLabel(IFButton v) {
   }
 }
 
+
 void displayVal(IFLabel l, IFTextField t) {
   l.setLabel(t.getValue());
 }
 
+// TAG Section ------------------------------------------------
+
+void newTag(int thisTag) {
+  setCurrentColumn(thisTag);
+  // Play a millumin column
+  sendOSCBundleInt(adrMillumin, "/millumin/action/launchColumn", 3 + currentColumn);
+}
+
+void setCurrentColumn(int thisTag) {
+
+  switch(thisTag) {
+  case TAG_X_IDX:
+    currentColumn = 0 + columnX;
+    break;
+
+  case TAG_S_IDX:
+    currentColumn = 8 + columnS;
+    break;
+
+  case TAG_M_IDX:
+    currentColumn = 16 + columnM;
+    break;
+
+  case TAG_L_IDX:
+    currentColumn = 24 + columnL;
+    break;
+
+  case TAG_OFF_IDX:
+    if (currentColumn >= 0 && currentColumn < 8) {
+      println("Last Selected = X");
+      currentColumn = 0 + columnX + 1;
+      columnX = setColumn(columnX);
+    } else if (currentColumn >= 8 && currentColumn < 16) {
+      println("Last Selected = S");
+      currentColumn = 8 + columnS + 1;
+      columnS = setColumn(columnS);
+    } else if (currentColumn >= 16 && currentColumn < 24) {
+      println("Last Selected = M");
+      currentColumn = 16 + columnM + 1;
+      columnM = setColumn(columnM);
+    } else if (currentColumn >= 24 && currentColumn < 32) {
+      println("Last Selected = L");
+      currentColumn = 24 + columnL + 1;
+      columnL = setColumn(columnL);
+    } 
+    break;
+  }
+}
+
+
+int setColumn(int column) {
+  column += 2;
+  // Then switch between in and Out
+  if (column >= 8) {
+    column = 0;
+  }
+  return column;
+}
+
 void mousePressed() {
- 
 }
 
 void actionPerformed (GUIEvent e) {
-  if (e.getSource() == volet1 || e.getSource() == volet2 || e.getSource() == volet3 || e.getSource() == volet4) {
-    if (e.getSource() == volet1) {
-      sendOSCBundle2(myRemoteLocation1);
-      changeLabel(volet1);
-  
-    } else if (e.getSource() == volet2) {
-      sendOSCBundle2(myRemoteLocation2);
-      changeLabel(volet2);
-  
-    } else if (e.getSource() == volet3) {
-      sendOSCBundle2(myRemoteLocation3);
-      changeLabel(volet3);
-  
-    } else if (e.getSource() == volet4) {
-      sendOSCBundle2(myRemoteLocation4);
-      changeLabel(volet4);
+  // ------------------------------------------------------------------------------
+  // Command the doors 
+  if (e.getSource() == voletX || e.getSource() == voletS || e.getSource() == voletM || e.getSource() == voletL) {
+    if (e.getSource() == voletM) {
+      if (directionM == 1) {
+        directionM = 0;
+      } else {
+        directionM = 1;
+      }
+      sendOSCBundleInt(adrVoletM, "/position", directionM);
+      changeLabelVolet(voletM, directionM);
+    } else if (e.getSource() == voletS) {
+      if (directionS == 1) {
+        directionS = 0;
+      }  
+      sendOSCBundleInt(adrVoletS, "/position", directionS);
+      changeLabelVolet(voletS, directionS);
+    } else if (e.getSource() == voletX) {
+      if (directionX == 1) {
+        directionX = 0;
+      }  
+      sendOSCBundleInt(adrVoletX, "/position", directionX);
+      changeLabelVolet(voletX, directionX);
+    } else if (e.getSource() == voletL) {
+      if (directionL == 1) {
+        directionL = 0;
+      }  
+      sendOSCBundleInt(adrVoletL, "/position", directionL);
+      changeLabelVolet(voletL, directionL);
     }
-    direction = -direction;
   }
-  
+
   // For the text fields
   if (e.getSource() == adj1 || e.getSource() == adj2 || e.getSource() == adj3 || e.getSource() == adj4) {
     if (e.getSource() == adj1 && keyPressed == true && keyCode == ENTER) {
-      sendOSCBundleAdjust(myRemoteLocation1, adj1);
+      sendOSCBundleAdjust(adrVoletX, adj1);
       displayVal(l1, adj1);
-  
     } else if (e.getSource() == adj2 && keyPressed == true && keyCode == ENTER) {
-      sendOSCBundleAdjust(myRemoteLocation2, adj2);
+      sendOSCBundleAdjust(adrVoletS, adj2);
       displayVal(l2, adj2);
-  
     } else if (e.getSource() == adj3 && keyPressed == true && keyCode == ENTER) {
-      sendOSCBundleAdjust(myRemoteLocation3, adj3);
+      sendOSCBundleAdjust(adrVoletM, adj3);
       displayVal(l3, adj3);
-  
     } else if (e.getSource() == adj4 && keyPressed == true && keyCode == ENTER) {
-      sendOSCBundleAdjust(myRemoteLocation4, adj4);
+      sendOSCBundleAdjust(adrVoletL, adj4);
       displayVal(l4, adj4);
     }
-  
+  }
+
+  // ------------------------------------------------------------------------------
+  // Command Millumin 
+  println("Action performed !!");
+  if (e.getSource() == tagX || e.getSource() == tagS || e.getSource() == tagM || e.getSource() == tagL || e.getSource() == tagOff) {
+    newTag(tagController.getSelectedIndex());
   }
 }
 
 /* incoming osc message are forwarded to the oscEvent method. */
 void oscEvent(OscMessage theOscMessage) {
-  int position;
-  /* print the address pattern and the typetag of the received OscMessage */
-  print("### received an osc message.");
-  print(" addrpattern: "+theOscMessage.addrPattern());
-  print(" typetag: "+theOscMessage.typetag());
-  println(" timetag: "+theOscMessage.timetag());
+
+  char lastTag = '?';
+
+  // print the address pattern and the typetag of the received OscMessage
+  print("### received an osc message : ");
+  print(theOscMessage.toString());
+  println();
+  print("Addrpattern: ");
+  println(theOscMessage.addrPattern());
+
+  if (theOscMessage.addrPattern().contains("/lastTag")) {
+    int intLastTag = theOscMessage.get(0).intValue();
+    lastTag = (char)intLastTag;
+  }
+
+  print("Last Tag is = ");
+  println(lastTag);
   
-  if (theOscMessage.addrPattern().equals("/feedback/position/0")) {
-    position = theOscMessage.get(0).intValue();
-    direction = (position == 0) ? -1 : 1;
-    changeLabel(volet1);
+  // Launch new tag (Play millumin, etc.)
+  switch(lastTag) {
+  case 'x':
+    newTag(TAG_X_IDX);
+    break;
+  case 's':
+    newTag(TAG_S_IDX);
+    break;
+  case 'm':
+    newTag(TAG_M_IDX);
+    break;
+  case 'l':
+    newTag(TAG_L_IDX);
+    break;
+  case 'e':
+    newTag(TAG_OFF_IDX);
+    break;
   }
-  if (theOscMessage.addrPattern().equals("/feedback/position/1")) {
-    position = theOscMessage.get(0).intValue();
-    direction = (position == 0) ? -1 : 1;
-    changeLabel(volet2);
-  }
-  if (theOscMessage.addrPattern().equals("/feedback/position/2")) {
-    position = theOscMessage.get(0).intValue();
-    direction = (position == 0) ? -1 : 1;
-    changeLabel(volet3);
-  }
-  if (theOscMessage.addrPattern().equals("/feedback/position/3")) {
-    position = theOscMessage.get(0).intValue();
-    direction = (position == 0) ? -1 : 1;
-    changeLabel(volet4);
-  }
-  
 }

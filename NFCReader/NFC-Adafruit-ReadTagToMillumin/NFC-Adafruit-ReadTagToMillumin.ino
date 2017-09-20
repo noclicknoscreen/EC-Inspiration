@@ -21,45 +21,21 @@ void setup() {
 void loop() {
 
   // Check connection and talk about it
-  //wifiCheck();
+  wifiCheck();
 
   char currentTag = nfcGetNewTag();
 
   // --------------------------------------------------
   // IN = First, I had no tag and I put it in
   // --------------------------------------------------
-  if (lastTag == TAGR_EMPTY && currentTag != TAGR_EMPTY) {
+  if (lastTag != currentTag) {
     // -------------------------------------------
     Serial.print("Brand New Tag : [");
     Serial.print(String(currentTag));
     Serial.println("]");
 
     //sendTag(currentTag, IN_BONUS, 0);
-    sendIt("/millumin/action/launchColumn", 18);
-    lastTag = currentTag;
-  }
-
-  // --------------------------------------------------
-  // OUT = Second, I had a tag and put it out
-  // --------------------------------------------------
-  else if (lastTag != TAGR_EMPTY && currentTag == TAGR_EMPTY) {
-    // -------------------------------------------
-    Serial.print("Removed old Tag : [");
-    Serial.print(String(lastTag));
-    Serial.println("]");
-
-    //sendTag(lastTag, OUT_BONUS, 0);
-    //sendIt("/millumin/action/launchColumn", 19);
-
-    msg = OSCMessage("/millumin/action/launchColumn");
-
-    msg.add(19);
-
-    Udp.beginPacket(outIp, outPort);
-    msg.send(Udp); // send the bytes to the SLIP stream
-    Udp.endPacket(); // mark the end of the OSC Packet
-    msg.empty(); // free space occupied by message
-
+    sendIt("/lastTag", currentTag);
     lastTag = currentTag;
   }
 
@@ -67,13 +43,15 @@ void loop() {
   // nothing, print a dot
   // --------------------------------------------------
   else {
+    /*
     Serial.print("Current Tag : [");
     Serial.print(String(currentTag));
     Serial.print("]");
     Serial.print(" Last Tag : [");
     Serial.print(String(lastTag));
     Serial.println("]");
-
+    */
+    Serial.print(".");
   }
 
 }

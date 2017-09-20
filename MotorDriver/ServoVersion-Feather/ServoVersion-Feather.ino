@@ -19,7 +19,7 @@
 
    Pilotage OSC :
    --------------
-   -> /position : le feather lit un float 0.0 ou 1.0
+   -> /position : le feather lit un entier 0 ou 1
    qui donne l'ordre d'ouverture ou de fermeture du volet
 
    -> /adjust :  le feather lit un entier entre -20 et 20 q

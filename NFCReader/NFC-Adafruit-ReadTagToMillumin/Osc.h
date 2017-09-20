@@ -15,7 +15,6 @@
 
 // OSC Dependencies -----------------------------
 #include <OSCMessage.h>
-OSCMessage msg;
 
 // -------------------------------------------------
 // Wifi Section
@@ -31,7 +30,7 @@ const unsigned int localPort = 2390;        // local port to listen for UDP pack
 // -------------------------------------------------
 //destination IP
 IPAddress outIp(192, 168, 2, 31);
-const unsigned int outPort = 5000;
+const unsigned int outPort = 2391;
 
 // -------------------------------------------------
 // Specials Eurocave Section
@@ -47,7 +46,7 @@ const unsigned int outPort = 5000;
 //int xColBonus, sColBonus, mColBonus, lColBonus;
 int numVignette;
 
-  // ----------------------------------------------------------
+// ----------------------------------------------------------
 // Do blink a led without delay
 // First you have to setup your pin with this line below
 // pinMode(LED_BUILTIN, OUTPUT);
@@ -111,11 +110,11 @@ void OscInit() {
 
   // Init the column bonuses
   /*
-  xColBonus = random(4);
-  sColBonus = random(4);
-  mColBonus = random(4);
-  lColBonus = random(4);
-  numVignette = random(3);
+    xColBonus = random(4);
+    sColBonus = random(4);
+    mColBonus = random(4);
+    lColBonus = random(4);
+    numVignette = random(3);
   */
 }
 
@@ -133,85 +132,6 @@ void wifiCheck() {
 
 }
 
-int incBonus(int _bonus) {
-  // Increment
-  _bonus++;
-  // If you go too far, come back !
-  if (_bonus >= 4) {
-    _bonus = 0;
-  }
-
-  return _bonus;
-
-}
-/*
-int getNextBonus(char _tag) {
-
-  if (_tag == 'X' || _tag == 'x') {
-    // -----------------------------------
-    xColBonus = incBonus(xColBonus);
-    return xColBonus;
-  } else if (_tag == 'S' || _tag == 's') {
-    // -----------------------------------
-    sColBonus = incBonus(sColBonus);
-    return sColBonus;
-  } else if (_tag == 'M' || _tag == 'm') {
-    // -----------------------------------
-    mColBonus = incBonus(mColBonus);
-    return mColBonus;
-  } else if (_tag == 'L' || _tag == 'l') {
-    // -----------------------------------
-    lColBonus = incBonus(lColBonus);
-    return lColBonus;
-  }
-
-  return 0;
-
-}
-*/
-/*
-int getCurrentBonus(char _tag) {
-
-  if (_tag == 'X' || _tag == 'x') {
-    // -----------------------------------
-    return xColBonus;
-  } else if (_tag == 'S' || _tag == 's') {
-    // -----------------------------------
-    return sColBonus;
-  } else if (_tag == 'M' || _tag == 'm') {
-    // -----------------------------------
-    return mColBonus;
-  } else if (_tag == 'L' || _tag == 'l') {
-    // -----------------------------------
-    return lColBonus;
-  }
-
-  return 0;
-
-}
-*/
-int getColumnIdx(char _tag) {
-
-  int columnIdx = -1;
-
-  if (_tag == 'X' || _tag == 'x') {
-    // -----------------------------------
-    columnIdx = X_BASE_COL;
-  } else if (_tag == 'S' || _tag == 's') {
-    // -----------------------------------
-    columnIdx = S_BASE_COL;
-  } else if (_tag == 'M' || _tag == 'm') {
-    // -----------------------------------
-    columnIdx = M_BASE_COL;
-  } else if (_tag == 'L' || _tag == 'l') {
-    // -----------------------------------
-    columnIdx = L_BASE_COL;
-  }
-
-  return columnIdx;
-
-}
-
 void sendIt(String _address, uint8_t _intValue) {
 
   char _addr[255];
@@ -226,7 +146,7 @@ void sendIt(String _address, uint8_t _intValue) {
   Serial.print(",");
   Serial.println(outPort);
 
-  msg = OSCMessage(_addr);
+  OSCMessage msg(_addr);
 
   msg.add(_intValue);
 
@@ -234,58 +154,6 @@ void sendIt(String _address, uint8_t _intValue) {
   msg.send(Udp); // send the bytes to the SLIP stream
   Udp.endPacket(); // mark the end of the OSC Packet
   msg.empty(); // free space occupied by message
-
-}
-
-// ------------------------------------------------------------
-// Sending TAG
-// To send a tag :
-// 1st step : get the base column index
-// 2st step : set a bonus
-//    - bonus to In animation = 0
-//    - bonus to Out animation = 1
-// 3rd step : get a second bonus value determined by the decorum style you want
-// ------------------------------------------------------------
-
-void sendTag(char _tag, int _inOutBonus, int _colBonus) {
-
-  int columnIdx = getColumnIdx(_tag);
-  Serial.print("Column idx : ");
-  Serial.println(columnIdx);
-  
-  if (columnIdx >= 1) {
-    // Idx is right, send it !
-    // Launch a column --
-    sendIt("/millumin/action/launchColumn", 26);
-    //sendIt("/millumin/action/launchColumn", _inOutBonus + 2 * _colBonus + columnIdx);
-
-    if (_inOutBonus == IN_BONUS) {
-      // But Change the vignette (X, S , M ou L)
-      if (_tag == 'X') {
-        sendIt("/millumin/VignetteX/media/time", 10 * numVignette);
-      } else if (_tag == 'S') {
-        sendIt("/millumin/VignetteS/media/time", 10 * numVignette);
-      } else if (_tag == 'M') {
-        sendIt("/millumin/VignetteM/media/time", 10 * numVignette);
-      } else if (_tag == 'L') {
-        sendIt("/millumin/VignetteL/media/time", 10 * numVignette);
-      }
-      // Incremente le numéro de vignette
-      numVignette++;
-      if (numVignette > 3) {
-        numVignette = 0;
-      }
-
-    }
-
-  } else {
-    // not right, print a tip
-    Serial.print("Column Idx is out of range, probably wrong tag (");
-    Serial.print(_tag);
-    Serial.print(",");
-    Serial.print(")");
-    Serial.println();
-  }
 
 }
 

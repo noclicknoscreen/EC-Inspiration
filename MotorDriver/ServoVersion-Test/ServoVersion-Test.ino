@@ -17,6 +17,7 @@ ServoWrapper myServo;
 #define SERVO_ADJ A0
 
 int upState, dnState;
+<<<<<<< Updated upstream
 int servoAdjust = 0, servoAdjustOld = 0;
 float startTime, endTime = 0;
 void setup()
@@ -24,6 +25,15 @@ void setup()
 
   Serial.begin(9600);
 
+=======
+int littleStepUp = true;
+  
+void setup()
+{
+
+  Serial.begin(115200);
+
+>>>>>>> Stashed changes
   // attaches the servo on pin 9 to the servo object
   // And set the center value to 90 (half of 0 - 180)
   myServo.setup(SERVO_CTRL_PIN, 0);
@@ -35,11 +45,22 @@ void setup()
   // Those are 3 contacts
   pinMode(FC_UP, INPUT_PULLUP);
   pinMode(FC_DN, INPUT_PULLUP);
+<<<<<<< Updated upstream
   // Set the the analog pin to center servo
   pinMode(SERVO_ADJ, INPUT);
   upState = 0;
   dnState = 0;
 }
+=======
+
+}
+
+void loop()
+{
+  // -----------------------------------------------------------------------
+  upState = digitalRead(PIN_UP);
+  dnState = digitalRead(PIN_DN);
+>>>>>>> Stashed changes
 
 void loop()
 {
@@ -101,6 +122,7 @@ void loop()
 #endif
 
   // -------------------------------------------------------
+<<<<<<< Updated upstream
   // Reading adusting value for servo, if changed
   // -------------------------------------------------------
   int sensorValue = analogRead(SERVO_ADJ);
@@ -123,10 +145,14 @@ void loop()
   // Running the SERVO
   // -------------------------------------------------------
   if (upState == HIGH) {
+=======
+  if (upState == LOW) {
+>>>>>>> Stashed changes
     // Turn clockwise
     // 1 : Full speed clockwise
     // 0 : Would be stop
     // -1 : Full speed counterclockwise
+<<<<<<< Updated upstream
     myServo.continousRotate(-1.5);
 
   } else if (dnState == HIGH) {
@@ -154,4 +180,33 @@ void cmd_stop() {
 }
 
 
+=======
+    if (fcUpState == LOW) {
+      // Run Zone
+      myServo.continousRotate(1);
+    } else {
+      // Stop Zone, when rising up, nothing particular !
+    }
+  } else if (dnState == LOW) {
+    // Turn counterclockwise
+    if(fcDnState == LOW){
+      // Run Zone
+      myServo.continousRotate(-1);
+      littleStepUp = true;
+    }else{
+      // Stop zone, if going down, do a little up
+      myServo.continousRotate(1);
+      delay(50);
+      littleStepUp = false;
+    }
+  } else {
+    // Stop
+    myServo.maintainCenter();
+
+  }
+
+  //delay(100);
+
+}
+>>>>>>> Stashed changes
 

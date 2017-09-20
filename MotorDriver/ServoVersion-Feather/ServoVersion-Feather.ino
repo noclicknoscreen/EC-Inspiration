@@ -74,6 +74,27 @@ typedef struct {
 Feather feathers[NUMBER_OF_FEATHERS];
 int featherId = 0;  // index of feather in the structure
 
+// ----------------------------------------------------------
+// Do blink a led without delay
+// First you have to setup your pin with this line below
+// pinMode(LED_BUILTIN, OUTPUT);
+// ----------------------------------------------------------
+void ledBlink(unsigned int _led, unsigned int _delayMs) {
+  float alternativeSignal = (millis() % _delayMs) / (float)_delayMs;
+  if (alternativeSignal > 0.5) {
+    digitalWrite(_led, HIGH);
+  } else {
+    digitalWrite(_led, LOW);
+  }
+}
+
+/*************************************************
+   Returns a human readable IP from a string
+ **************************************************/
+String humanReadableIp(IPAddress ip) {
+  return String(ip[0]) + String(".") + String(ip[1]) + String(".") + String(ip[2]) + String(".") + String(ip[3]);
+}
+
 // --------------------------------------------------------------------------------------
 //  PARAMETRAGE DES FEATHERS DE L'INSTALLATION
 // --------------------------------------------------------------------------------------
@@ -185,6 +206,7 @@ void readOSCBundle() {
     }
 
     if (!bundle.hasError()) {
+      Serial.println("Bundle No Error");
       // Dispatch from Addresses received to callback functions
       bundle.dispatch("/position", positionChange);
       bundle.dispatch("/adjust", adjustChange);
@@ -195,7 +217,7 @@ void readOSCBundle() {
       Serial.print("error: ");
       Serial.println(error);
       // not connected => Message + Blink Lon
-      errorBlink(ERROR_LED, 200);
+      ledBlink(ERROR_LED, 200);
 
     }
   }
@@ -393,7 +415,7 @@ void loop()
   if (WiFi.status() != WL_CONNECTED) {
     // not connected => Message + Blink Short
     Serial.println("Wifi Not Connected :(");
-    errorBlink(ERROR_LED, 100);
+    ledBlink(ERROR_LED, 100);
   } else {
     //
     // Nominal running : Status led gives a 1 sec pulse.
@@ -493,15 +515,15 @@ void cmd_dn() {
 // --------------------------------------------------------------------------------------
 void positionChange(OSCMessage &msg) {
   // Possibly issue onto Millumin, so constrain the values; This should be 0.0 or 1.0
-  float nextPosition = constrain(msg.getFloat(0), 0.0, 1.0);
+  float nextPosition = constrain(msg.getInt(0), 0.0, 1.0);
 
   //receivedPosition = 255 * nextPosition;
   //analogWrite(POSTN_LED, receivedPosition);
 
-#ifdef DEBUG
+//#ifdef DEBUG
   Serial.print("/position: ");
-  Serial.print(nextPosition);
-#endif
+  Serial.println(nextPosition);
+//#endif
 
   switch (int(nextPosition)) {
     case 0 :

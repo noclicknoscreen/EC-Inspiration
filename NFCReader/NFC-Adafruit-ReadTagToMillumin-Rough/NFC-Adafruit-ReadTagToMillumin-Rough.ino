@@ -35,7 +35,7 @@ void loop() {
     Serial.println("]");
 
     //sendTag(currentTag, IN_BONUS, 0);
-    sendIt("/millumin/action/launchColumn", 18);
+    sendIt("/millumin/action/launchColumn", 19);
     lastTag = currentTag;
   }
 
@@ -49,17 +49,7 @@ void loop() {
     Serial.println("]");
 
     //sendTag(lastTag, OUT_BONUS, 0);
-    //sendIt("/millumin/action/launchColumn", 19);
-
-    msg = OSCMessage("/millumin/action/launchColumn");
-
-    msg.add(19);
-
-    Udp.beginPacket(outIp, outPort);
-    msg.send(Udp); // send the bytes to the SLIP stream
-    Udp.endPacket(); // mark the end of the OSC Packet
-    msg.empty(); // free space occupied by message
-
+    sendIt("/millumin/action/launchColumn", 20);
     lastTag = currentTag;
   }
 

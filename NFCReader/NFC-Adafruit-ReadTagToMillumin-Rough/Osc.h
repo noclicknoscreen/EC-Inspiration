@@ -15,7 +15,6 @@
 
 // OSC Dependencies -----------------------------
 #include <OSCMessage.h>
-OSCMessage msg;
 
 // -------------------------------------------------
 // Wifi Section
@@ -226,7 +225,7 @@ void sendIt(String _address, uint8_t _intValue) {
   Serial.print(",");
   Serial.println(outPort);
 
-  msg = OSCMessage(_addr);
+  OSCMessage msg(_addr);
 
   msg.add(_intValue);
 

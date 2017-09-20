@@ -125,10 +125,10 @@ void sendOSCBundle2(NetAddress remoteLocation) {
   OscMessage myMessage = new OscMessage("/position");
   if (direction < 0) {
     println("/position/0.0");
-    myMessage.add(0.0);
+    myMessage.add(0);
   } else {
     println("/position/1.0");
-    myMessage.add(1.0);
+    myMessage.add(1);
   }
   myBundle.add(myMessage);
   myBundle.setTimetag(myBundle.now() + 10000);

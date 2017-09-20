@@ -150,6 +150,24 @@ void sendOSCBundleInt(NetAddress remoteLocation, String address, int value) {
   myBundle.setTimetag(myBundle.now() + 10000);
   oscP5.send(myBundle, remoteLocation);
 }
+/*
+* Sends an osc bundle 0 or 1 by step depending of the direction parameter (-1.0, 1.0)
+ */
+void sendOSCBundleFloat(NetAddress remoteLocation, String address, float value) {
+  OscBundle myBundle = new OscBundle();
+  println("Sending OSC bundle to " + remoteLocation.toString() );
+
+  OscMessage myMessage = new OscMessage(address);
+  myMessage.add(value);
+
+  print(myMessage);
+  print(" : ");
+  println(value);
+
+  myBundle.add(myMessage);
+  myBundle.setTimetag(myBundle.now() + 10000);
+  oscP5.send(myBundle, remoteLocation);
+}
 
 void sendOSCBundleAdjust(NetAddress remoteLocation, IFTextField t) {
   OscBundle myBundle = new OscBundle();
@@ -185,8 +203,20 @@ void displayVal(IFLabel l, IFTextField t) {
 
 void newTag(int thisTag) {
   setCurrentColumn(thisTag);
+
   // Play a millumin column
   sendOSCBundleInt(adrMillumin, "/millumin/action/launchColumn", 3 + currentColumn);
+
+  // Changing Vignette media time
+  if (currentColumn % 2 == 0) {
+    int idxLayer = (int)random(1, 3);
+    // Fade out all
+    sendOSCBundleFloat(adrMillumin, "/millumin/index:1/opacity", 0.0);
+    sendOSCBundleFloat(adrMillumin, "/millumin/index:2/opacity", 0.0);
+    sendOSCBundleFloat(adrMillumin, "/millumin/index:2/opacity", 0.0);
+    // Fade in one of them
+    sendOSCBundleFloat(adrMillumin, "/millumin/index:" + idxLayer+ "/opacity", 1.0);
+  }
 }
 
 void setCurrentColumn(int thisTag) {
@@ -320,7 +350,7 @@ void oscEvent(OscMessage theOscMessage) {
 
   print("Last Tag is = ");
   println(lastTag);
-  
+
   // Launch new tag (Play millumin, etc.)
   switch(lastTag) {
   case 'x':

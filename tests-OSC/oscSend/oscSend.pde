@@ -205,7 +205,7 @@ void newTag(int thisTag) {
   setCurrentColumn(thisTag);
 
   // Play a millumin column
-  sendOSCBundleInt(adrMillumin, "/millumin/action/launchColumn", 3 + currentColumn);
+  sendOSCBundleInt(adrMillumin, "/millumin/action/launchColumn", currentColumn);
 
   // Changing Vignette media time
   if (currentColumn % 2 == 0) {
@@ -223,48 +223,53 @@ void setCurrentColumn(int thisTag) {
 
   switch(thisTag) {
   case TAG_X_IDX:
-    currentColumn = 0 + columnX;
+    currentColumn = 3 + 0 + columnX;
+    columnX = setColumn(columnX);
     break;
 
   case TAG_S_IDX:
-    currentColumn = 8 + columnS;
+    currentColumn = 3 + 4 + columnS;
+    columnS = setColumn(columnS);
     break;
 
   case TAG_M_IDX:
-    currentColumn = 16 + columnM;
+    currentColumn = 3 + 8 + columnM;
+    columnM = setColumn(columnM);
     break;
 
   case TAG_L_IDX:
-    currentColumn = 24 + columnL;
+    currentColumn = 3 + 12 + columnL;
+    columnL = setColumn(columnL);
     break;
 
   case TAG_OFF_IDX:
-    if (currentColumn >= 0 && currentColumn < 8) {
+    /*if (currentColumn >= 0 && currentColumn < 8) {
       println("Last Selected = X");
-      currentColumn = 0 + columnX + 1;
-      columnX = setColumn(columnX);
+      //currentColumn = 0 + columnX + 1;
+      //columnX = setColumn(columnX);
     } else if (currentColumn >= 8 && currentColumn < 16) {
       println("Last Selected = S");
-      currentColumn = 8 + columnS + 1;
-      columnS = setColumn(columnS);
+      //currentColumn = 8 + columnS + 1;
+      //columnS = setColumn(columnS);
     } else if (currentColumn >= 16 && currentColumn < 24) {
       println("Last Selected = M");
-      currentColumn = 16 + columnM + 1;
-      columnM = setColumn(columnM);
+      //currentColumn = 16 + columnM + 1;
+      //columnM = setColumn(columnM);
     } else if (currentColumn >= 24 && currentColumn < 32) {
       println("Last Selected = L");
-      currentColumn = 24 + columnL + 1;
-      columnL = setColumn(columnL);
-    } 
+      //currentColumn = 24 + columnL + 1;
+      //columnL = setColumn(columnL);
+    }*/
+    currentColumn = 2;
     break;
   }
 }
 
 
 int setColumn(int column) {
-  column += 2;
+  column += 1;
   // Then switch between in and Out
-  if (column >= 8) {
+  if (column >= 4) {
     column = 0;
   }
   return column;

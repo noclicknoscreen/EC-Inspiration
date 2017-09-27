@@ -94,7 +94,7 @@ void OscInit() {
   WiFi.begin(ssid, pass);
 
   while (WiFi.status() != WL_CONNECTED) {
-    Serial.print(".");
+    Serial.print("#");
     // Blink Led
     ledBlink(CTRL_LED, 50);
   }

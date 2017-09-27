@@ -15,7 +15,7 @@ GUIController c;
 IFButton voletX, voletS, voletM, voletL;
 
 IFTextField adj1, adj2, adj3, adj4;
-IFLabel l, l1, l2, l3, l4;
+IFLabel l, l1, l2, l3, l4, lblLastTag;
 
 IFLookAndFeel closedLook, openedLook;
 
@@ -71,6 +71,7 @@ void setup() {
   l2 = new IFLabel("", 180, 45);
   l3 = new IFLabel("", 310, 45);
   l4 = new IFLabel("", 440, 45);
+  lblLastTag = new IFLabel("Last tag : ", 75, 450);
 
   voletX.addActionListener(this);
   voletS.addActionListener(this);
@@ -105,6 +106,12 @@ void setup() {
   c.add (tagL);
   c.add (tagOff);
 
+  c.add (l1);
+  c.add (l2);
+  c.add (l3);
+  c.add (l4);
+  c.add (lblLastTag);
+
   openedLook = new IFLookAndFeel(this, IFLookAndFeel.DEFAULT);
   openedLook.baseColor = color(0, 0, 0);
   openedLook.textColor = color(255, 255, 255);
@@ -130,6 +137,13 @@ void setup() {
 
 void draw() {
   background(255);
+  /*
+  l1.draw();
+   l2.draw();
+   l3.draw();
+   l4.draw();
+   lblLastTag.draw();
+   */
 }
 
 /*
@@ -209,169 +223,176 @@ void newTag(int thisTag) {
 
   // Changing Vignette media time
   if (currentColumn % 2 == 0) {
-    int idxLayer = (int)random(1, 3);
+    int idxInLayer = (int)random(1, 8);
     // Fade out all
-    sendOSCBundleFloat(adrMillumin, "/millumin/index:1/opacity", 0.0);
-    sendOSCBundleFloat(adrMillumin, "/millumin/index:2/opacity", 0.0);
-    sendOSCBundleFloat(adrMillumin, "/millumin/index:2/opacity", 0.0);
-    // Fade in one of them
-    sendOSCBundleFloat(adrMillumin, "/millumin/index:" + idxLayer+ "/opacity", 1.0);
-  }
-}
-
-void setCurrentColumn(int thisTag) {
-
-  switch(thisTag) {
-  case TAG_X_IDX:
-    currentColumn = 3 + 0 + columnX;
-    columnX = setColumn(columnX);
-    break;
-
-  case TAG_S_IDX:
-    currentColumn = 3 + 4 + columnS;
-    columnS = setColumn(columnS);
-    break;
-
-  case TAG_M_IDX:
-    currentColumn = 3 + 8 + columnM;
-    columnM = setColumn(columnM);
-    break;
-
-  case TAG_L_IDX:
-    currentColumn = 3 + 12 + columnL;
-    columnL = setColumn(columnL);
-    break;
-
-  case TAG_OFF_IDX:
-    /*if (currentColumn >= 0 && currentColumn < 8) {
-      println("Last Selected = X");
-      //currentColumn = 0 + columnX + 1;
-      //columnX = setColumn(columnX);
-    } else if (currentColumn >= 8 && currentColumn < 16) {
-      println("Last Selected = S");
-      //currentColumn = 8 + columnS + 1;
-      //columnS = setColumn(columnS);
-    } else if (currentColumn >= 16 && currentColumn < 24) {
-      println("Last Selected = M");
-      //currentColumn = 16 + columnM + 1;
-      //columnM = setColumn(columnM);
-    } else if (currentColumn >= 24 && currentColumn < 32) {
-      println("Last Selected = L");
-      //currentColumn = 24 + columnL + 1;
-      //columnL = setColumn(columnL);
-    }*/
-    currentColumn = 2;
-    break;
-  }
-}
-
-
-int setColumn(int column) {
-  column += 1;
-  // Then switch between in and Out
-  if (column >= 4) {
-    column = 0;
-  }
-  return column;
-}
-
-void mousePressed() {
-}
-
-void actionPerformed (GUIEvent e) {
-  // ------------------------------------------------------------------------------
-  // Command the doors 
-  if (e.getSource() == voletX || e.getSource() == voletS || e.getSource() == voletM || e.getSource() == voletL) {
-    if (e.getSource() == voletM) {
-      if (directionM == 1) {
-        directionM = 0;
+    for (int idxLayer = 1; idxLayer <= 8; idxLayer++) {
+      if (idxLayer == idxInLayer) {
+        // Fade in one of them
+        sendOSCBundleFloat(adrMillumin, "/millumin/index:" + idxLayer+ "/opacity", 1.0);
+        sendOSCBundleFloat(adrMillumin, "/millumin/index:" + idxLayer+ "/startMedia", 1.0);
       } else {
-        directionM = 1;
+        // Fade out the others
+        sendOSCBundleFloat(adrMillumin, "/millumin/index:" + idxLayer+ "/opacity", 0.0);
+        sendOSCBundleFloat(adrMillumin, "/millumin/index:" + idxLayer+ "/stopMedia", 0.0);
       }
-      sendOSCBundleInt(adrVoletM, "/position", directionM);
-      changeLabelVolet(voletM, directionM);
-    } else if (e.getSource() == voletS) {
-      if (directionS == 1) {
-        directionS = 0;
-      }  
-      sendOSCBundleInt(adrVoletS, "/position", directionS);
-      changeLabelVolet(voletS, directionS);
-    } else if (e.getSource() == voletX) {
-      if (directionX == 1) {
-        directionX = 0;
-      }  
-      sendOSCBundleInt(adrVoletX, "/position", directionX);
-      changeLabelVolet(voletX, directionX);
-    } else if (e.getSource() == voletL) {
-      if (directionL == 1) {
-        directionL = 0;
-      }  
-      sendOSCBundleInt(adrVoletL, "/position", directionL);
-      changeLabelVolet(voletL, directionL);
+    }
+  }
+}
+  void setCurrentColumn(int thisTag) {
+
+    switch(thisTag) {
+    case TAG_X_IDX:
+      currentColumn = 3 + 0 + columnX;
+      columnX = setColumn(columnX);
+      break;
+
+    case TAG_S_IDX:
+      currentColumn = 3 + 4 + columnS;
+      columnS = setColumn(columnS);
+      break;
+
+    case TAG_M_IDX:
+      currentColumn = 3 + 8 + columnM;
+      columnM = setColumn(columnM);
+      break;
+
+    case TAG_L_IDX:
+      currentColumn = 3 + 12 + columnL;
+      columnL = setColumn(columnL);
+      break;
+
+    case TAG_OFF_IDX:
+      /*if (currentColumn >= 0 && currentColumn < 8) {
+       println("Last Selected = X");
+       //currentColumn = 0 + columnX + 1;
+       //columnX = setColumn(columnX);
+       } else if (currentColumn >= 8 && currentColumn < 16) {
+       println("Last Selected = S");
+       //currentColumn = 8 + columnS + 1;
+       //columnS = setColumn(columnS);
+       } else if (currentColumn >= 16 && currentColumn < 24) {
+       println("Last Selected = M");
+       //currentColumn = 16 + columnM + 1;
+       //columnM = setColumn(columnM);
+       } else if (currentColumn >= 24 && currentColumn < 32) {
+       println("Last Selected = L");
+       //currentColumn = 24 + columnL + 1;
+       //columnL = setColumn(columnL);
+       }*/
+      currentColumn = 2;
+      break;
     }
   }
 
-  // For the text fields
-  if (e.getSource() == adj1 || e.getSource() == adj2 || e.getSource() == adj3 || e.getSource() == adj4) {
-    if (e.getSource() == adj1 && keyPressed == true && keyCode == ENTER) {
-      sendOSCBundleAdjust(adrVoletX, adj1);
-      displayVal(l1, adj1);
-    } else if (e.getSource() == adj2 && keyPressed == true && keyCode == ENTER) {
-      sendOSCBundleAdjust(adrVoletS, adj2);
-      displayVal(l2, adj2);
-    } else if (e.getSource() == adj3 && keyPressed == true && keyCode == ENTER) {
-      sendOSCBundleAdjust(adrVoletM, adj3);
-      displayVal(l3, adj3);
-    } else if (e.getSource() == adj4 && keyPressed == true && keyCode == ENTER) {
-      sendOSCBundleAdjust(adrVoletL, adj4);
-      displayVal(l4, adj4);
+
+  int setColumn(int column) {
+    column += 1;
+    // Then switch between in and Out
+    if (column >= 4) {
+      column = 0;
+    }
+    return column;
+  }
+
+  void mousePressed() {
+  }
+
+  void actionPerformed (GUIEvent e) {
+    // ------------------------------------------------------------------------------
+    // Command the doors 
+    if (e.getSource() == voletX || e.getSource() == voletS || e.getSource() == voletM || e.getSource() == voletL) {
+      if (e.getSource() == voletM) {
+        if (directionM == 1) {
+          directionM = 0;
+        } else {
+          directionM = 1;
+        }
+        sendOSCBundleInt(adrVoletM, "/position", directionM);
+        changeLabelVolet(voletM, directionM);
+      } else if (e.getSource() == voletS) {
+        if (directionS == 1) {
+          directionS = 0;
+        }  
+        sendOSCBundleInt(adrVoletS, "/position", directionS);
+        changeLabelVolet(voletS, directionS);
+      } else if (e.getSource() == voletX) {
+        if (directionX == 1) {
+          directionX = 0;
+        }  
+        sendOSCBundleInt(adrVoletX, "/position", directionX);
+        changeLabelVolet(voletX, directionX);
+      } else if (e.getSource() == voletL) {
+        if (directionL == 1) {
+          directionL = 0;
+        }  
+        sendOSCBundleInt(adrVoletL, "/position", directionL);
+        changeLabelVolet(voletL, directionL);
+      }
+    }
+
+    // For the text fields
+    if (e.getSource() == adj1 || e.getSource() == adj2 || e.getSource() == adj3 || e.getSource() == adj4) {
+      if (e.getSource() == adj1 && keyPressed == true && keyCode == ENTER) {
+        sendOSCBundleAdjust(adrVoletX, adj1);
+        displayVal(l1, adj1);
+      } else if (e.getSource() == adj2 && keyPressed == true && keyCode == ENTER) {
+        sendOSCBundleAdjust(adrVoletS, adj2);
+        displayVal(l2, adj2);
+      } else if (e.getSource() == adj3 && keyPressed == true && keyCode == ENTER) {
+        sendOSCBundleAdjust(adrVoletM, adj3);
+        displayVal(l3, adj3);
+      } else if (e.getSource() == adj4 && keyPressed == true && keyCode == ENTER) {
+        sendOSCBundleAdjust(adrVoletL, adj4);
+        displayVal(l4, adj4);
+      }
+    }
+
+    // ------------------------------------------------------------------------------
+    // Command Millumin 
+    println("Action performed !!");
+    if (e.getSource() == tagX || e.getSource() == tagS || e.getSource() == tagM || e.getSource() == tagL || e.getSource() == tagOff) {
+      newTag(tagController.getSelectedIndex());
     }
   }
 
-  // ------------------------------------------------------------------------------
-  // Command Millumin 
-  println("Action performed !!");
-  if (e.getSource() == tagX || e.getSource() == tagS || e.getSource() == tagM || e.getSource() == tagL || e.getSource() == tagOff) {
-    newTag(tagController.getSelectedIndex());
+  /* incoming osc message are forwarded to the oscEvent method. */
+  void oscEvent(OscMessage theOscMessage) {
+
+    char lastTag = '?';
+
+    // print the address pattern and the typetag of the received OscMessage
+    print("### received an osc message : ");
+    print(theOscMessage.toString());
+    println();
+    print("Addrpattern: ");
+    println(theOscMessage.addrPattern());
+
+    if (theOscMessage.addrPattern().contains("/lastTag")) {
+      int intLastTag = theOscMessage.get(0).intValue();
+      lastTag = (char)intLastTag;
+    }
+
+    lblLastTag.setLabel("Last Tag is = " + lastTag);
+
+    print("Last Tag is = ");
+    println(lastTag);
+
+    // Launch new tag (Play millumin, etc.)
+    switch(lastTag) {
+    case 'x':
+      newTag(TAG_X_IDX);
+      break;
+    case 's':
+      newTag(TAG_S_IDX);
+      break;
+    case 'm':
+      newTag(TAG_M_IDX);
+      break;
+    case 'l':
+      newTag(TAG_L_IDX);
+      break;
+    case 'e':
+      newTag(TAG_OFF_IDX);
+      break;
+    }
   }
-}
-
-/* incoming osc message are forwarded to the oscEvent method. */
-void oscEvent(OscMessage theOscMessage) {
-
-  char lastTag = '?';
-
-  // print the address pattern and the typetag of the received OscMessage
-  print("### received an osc message : ");
-  print(theOscMessage.toString());
-  println();
-  print("Addrpattern: ");
-  println(theOscMessage.addrPattern());
-
-  if (theOscMessage.addrPattern().contains("/lastTag")) {
-    int intLastTag = theOscMessage.get(0).intValue();
-    lastTag = (char)intLastTag;
-  }
-
-  print("Last Tag is = ");
-  println(lastTag);
-
-  // Launch new tag (Play millumin, etc.)
-  switch(lastTag) {
-  case 'x':
-    newTag(TAG_X_IDX);
-    break;
-  case 's':
-    newTag(TAG_S_IDX);
-    break;
-  case 'm':
-    newTag(TAG_M_IDX);
-    break;
-  case 'l':
-    newTag(TAG_L_IDX);
-    break;
-  case 'e':
-    newTag(TAG_OFF_IDX);
-    break;
-  }
-}

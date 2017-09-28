@@ -50,8 +50,8 @@
 ServoWrapper myServo;
 
 // Uncomment to display debug messages on serial
-//#define DEBUG
-//#define SERVO_DEBUG
+#define DEBUG
+#define SERVO_DEBUG
 
 #define NUMBER_OF_FEATHERS 4
 

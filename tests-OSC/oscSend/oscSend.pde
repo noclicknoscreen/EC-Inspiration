@@ -137,9 +137,9 @@ void setup() {
 
   // Send center setups
   adjX.setValue("-15");
-  adjS.setValue("-19");
-  adjM.setValue("0");
-  adjL.setValue("-15");
+  adjS.setValue("1");
+  adjM.setValue("-3");
+  adjL.setValue("-18");
   sendOSCBundleAdjust(adrVoletX, adjX);
   sendOSCBundleAdjust(adrVoletS, adjS);
   sendOSCBundleAdjust(adrVoletM, adjM);
@@ -227,79 +227,81 @@ void displayVal(IFLabel l, IFTextField t) {
 // TAG Section ------------------------------------------------
 
 void newTag(int thisTag) {
+  int firstColumnAvailable = 3;
+
   setCurrentColumn(thisTag);
 
   // Play a millumin column
-  sendOSCBundleInt(adrMillumin, "/millumin/action/launchColumn", currentColumn);
-
+  sendOSCBundleInt(adrMillumin, "/millumin/action/launchColumn", firstColumnAvailable + currentColumn);
+  /*
   // Changing Vignette media time
-  if (currentColumn % 2 == 0) {
-    int idxInLayer = (int)random(1, 8);
-    // Fade out all
-    for (int idxLayer = 1; idxLayer <= 8; idxLayer++) {
-      if (idxLayer == idxInLayer) {
-        // Fade in one of them
-        sendOSCBundleFloat(adrMillumin, "/millumin/index:" + idxLayer+ "/opacity", 1.0);
-        sendOSCBundleFloat(adrMillumin, "/millumin/index:" + idxLayer+ "/startMedia", 1.0);
-      } else {
-        // Fade out the others
-        sendOSCBundleFloat(adrMillumin, "/millumin/index:" + idxLayer+ "/opacity", 0.0);
-        sendOSCBundleFloat(adrMillumin, "/millumin/index:" + idxLayer+ "/stopMedia", 0.0);
-      }
-    }
-  }
+   if (currentColumn % 2 == 0) {
+   int idxInLayer = (int)random(1, 8);
+   // Fade out all
+   for (int idxLayer = 1; idxLayer <= 8; idxLayer++) {
+   if (idxLayer == idxInLayer) {
+   // Fade in one of them
+   sendOSCBundleFloat(adrMillumin, "/millumin/index:" + idxLayer+ "/opacity", 1.0);
+   sendOSCBundleFloat(adrMillumin, "/millumin/index:" + idxLayer+ "/startMedia", 1.0);
+   } else {
+   // Fade out the others
+   sendOSCBundleFloat(adrMillumin, "/millumin/index:" + idxLayer+ "/opacity", 0.0);
+   sendOSCBundleFloat(adrMillumin, "/millumin/index:" + idxLayer+ "/stopMedia", 0.0);
+   }
+   }
+   }
+   */
 }
 void setCurrentColumn(int thisTag) {
 
+  int StepFullColumns = 8;
+  int OutStep = 1;
+
   switch(thisTag) {
   case TAG_X_IDX:
-    currentColumn = 3 + 0 + columnX;
-    columnX = setColumn(columnX);
+    currentColumn = 0 * StepFullColumns + columnX;
     break;
 
   case TAG_S_IDX:
-    currentColumn = 3 + 4 + columnS;
-    columnS = setColumn(columnS);
+    currentColumn = 1 * StepFullColumns + columnS;
     break;
 
   case TAG_M_IDX:
-    currentColumn = 3 + 8 + columnM;
-    columnM = setColumn(columnM);
+    currentColumn = 2 * StepFullColumns + columnM;
     break;
 
   case TAG_L_IDX:
-    currentColumn = 3 + 12 + columnL;
-    columnL = setColumn(columnL);
+    currentColumn = 3 * StepFullColumns + columnL;
     break;
 
   case TAG_OFF_IDX:
-    /*if (currentColumn >= 0 && currentColumn < 8) {
-     println("Last Selected = X");
-     //currentColumn = 0 + columnX + 1;
-     //columnX = setColumn(columnX);
-     } else if (currentColumn >= 8 && currentColumn < 16) {
-     println("Last Selected = S");
-     //currentColumn = 8 + columnS + 1;
-     //columnS = setColumn(columnS);
-     } else if (currentColumn >= 16 && currentColumn < 24) {
-     println("Last Selected = M");
-     //currentColumn = 16 + columnM + 1;
-     //columnM = setColumn(columnM);
-     } else if (currentColumn >= 24 && currentColumn < 32) {
-     println("Last Selected = L");
-     //currentColumn = 24 + columnL + 1;
-     //columnL = setColumn(columnL);
-     }*/
-    currentColumn = 2;
+    if (currentColumn >= 0 * StepFullColumns && currentColumn < 1 * StepFullColumns) {
+      println("Last Selected = X");
+      currentColumn = 0 + columnX + OutStep;
+      columnX = setColumn(columnX);
+    } else if (currentColumn >= 1 * StepFullColumns && currentColumn < 2 * StepFullColumns) {
+      println("Last Selected = S");
+      currentColumn = 1 * StepFullColumns + columnS + OutStep;
+      columnS = setColumn(columnS);
+    } else if (currentColumn >= 2 * StepFullColumns && currentColumn < 3 * StepFullColumns) {
+      println("Last Selected = M");
+      currentColumn = 2 * StepFullColumns + columnM + OutStep;
+      columnM = setColumn(columnM);
+    } else if (currentColumn >= 3 * StepFullColumns && currentColumn < 4 * StepFullColumns) {
+      println("Last Selected = L");
+      currentColumn = 3 * StepFullColumns + columnL + OutStep;
+      columnL = setColumn(columnL);
+    }
+    //currentColumn = 2;
     break;
   }
 }
 
 
 int setColumn(int column) {
-  column += 1;
+  column += 2;
   // Then switch between in and Out
-  if (column >= 4) {
+  if (column >= 8) {
     column = 0;
   }
   return column;

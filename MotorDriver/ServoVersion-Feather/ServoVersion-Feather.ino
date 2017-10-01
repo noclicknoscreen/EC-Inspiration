@@ -51,7 +51,7 @@ ServoWrapper myServo;
 
 // Uncomment to display debug messages on serial
 #define DEBUG
-#define SERVO_DEBUG
+#//define SERVO_DEBUG
 
 #define NUMBER_OF_FEATHERS 4
 
@@ -59,6 +59,7 @@ ServoWrapper myServo;
 #define FC_DN          4
 #define FC_UP          5
 #define SERVO_CTRL_PIN 2
+#define COMMAND_PIN    16
 #define ERROR_LED      0
 
 // Structure to declare all the feathers of the install
@@ -99,7 +100,7 @@ String humanReadableIp(IPAddress ip) {
 //  PARAMETRAGE DES FEATHERS DE L'INSTALLATION
 // --------------------------------------------------------------------------------------
 void initFeathers() {
-  feathers[0].name = "Feather 1 - Volet de la Cave M";
+  feathers[0].name = "Feather 1 - Volet de la Cave L";
   feathers[0].mac_address = "60:1:94:19:EC:A8";
   feathers[0].ip = IPAddress(192, 168, 2, 12);
   feathers[0].speed = 1; // 1 = 100% of speed
@@ -109,7 +110,7 @@ void initFeathers() {
   feathers[1].ip = IPAddress(192, 168, 2, 13);
   feathers[1].speed = 1; // 1 = 100% of speed
 
-  feathers[2].name = "Feather 3 - Volet de la Cave L";
+  feathers[2].name = "Feather 3 - Volet de la Cave M";
   feathers[2].mac_address = "5C:CF:7F:3A:39:41";
   feathers[2].ip = IPAddress(192, 168, 2, 14);
   feathers[2].speed = 1; // 1 = 100% of speed
@@ -402,6 +403,11 @@ void setup()
   Serial.println("");
 
   Serial.print(featherInfo());
+
+// COMMAND PIN
+pinMode(COMMAND_PIN, OUTPUT);
+  
+  
 }
 
 // --------------------------------------------------------------------------------------
@@ -466,14 +472,15 @@ void loop()
       // 0 : Would be stop
       // -1 : Full speed counterclockwise
       myServo.continousRotate(-1);
-
+      ledBlink(COMMAND_PIN, 250);
     } else if (dnState == HIGH) {
       // Turn counterclockwise
       myServo.continousRotate(1);
-
+      ledBlink(COMMAND_PIN, 1000);
     } else {
       // Stop
       myServo.maintainCenter();
+      digitalWrite(COMMAND_PIN, LOW);
     }
   } // end else Wifi.status
 }
@@ -549,7 +556,7 @@ void positionChange(OSCMessage &msg) {
 //   Callback Function, called at every OSC bundle received
 // --------------------------------------------------------------------------------------
 void adjustChange(OSCMessage &msg) {
-  int servoAdjust = constrain(msg.getFloat(0), -20, 20);
+  int servoAdjust = constrain(msg.getFloat(0), -50, 50);
 
   Serial.print("/adjust: ");
   Serial.println(servoAdjust);
